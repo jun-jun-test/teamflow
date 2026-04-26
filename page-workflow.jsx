@@ -55,6 +55,91 @@ function BnFormModal({ bnEdit, bottlenecks, saveBottlenecks, onClose }) {
   );
 }
 
+// ① バグ修正：FlowStepCard を WorkflowPage の外に定義
+const STEP_ICONS = ["👥","📸","📝","✈️","📬","✅","🔍","⚙️","📊"];
+
+function FlowStepCard({ step, idx, editable, onUpdate, onMove, onRemove }) {
+  const c = STATUS_COLORS[step.status] || {};
+  const assignees = step.assignees || (step.assignee ? [step.assignee] : [MEMBERS[0]]);
+  var isDone = step.status === "完了";
+
+  function toggleAssignee(name) {
+    const current = step.assignees || [step.assignee || MEMBERS[0]];
+    const next = current.includes(name)
+      ? current.length > 1 ? current.filter(m => m !== name) : current
+      : [...current, name];
+    onUpdate({ assignees: next, assignee: next[0] });
+  }
+
+  return (
+    <div>
+      <div style={{ display:"flex", alignItems:"flex-start", gap:14, padding:"14px 18px", background:isDone?"#F3F4F6":"white", borderRadius:14, boxShadow:isDone?"none":"0 1px 6px rgba(0,0,0,0.07)", border:`1px solid ${isDone?"#D1D5DB":c.border||"#E5E7EB"}`, opacity:isDone?0.72:1, transition:"all 0.2s", position:"relative" }}>
+        {isDone && <div style={{ position:"absolute",top:8,right:10,background:"#16A34A",color:"white",borderRadius:9999,padding:"2px 8px",fontSize:10,fontWeight:700 }}>✓ 完了</div>}
+        <div style={{ width:32, height:32, borderRadius:"50%", background:isDone?"#9CA3AF":"var(--accent,#22C55E)", color:"white", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:14, flexShrink:0, marginTop:2 }}>
+          {isDone ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg> : idx+1}
+        </div>
+        <div style={{ width:40, height:40, borderRadius:10, background:"var(--accent-light,#DCFCE7)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>
+          {STEP_ICONS[idx % STEP_ICONS.length]}
+        </div>
+        <div style={{ flex:1, minWidth:0 }}>
+          {editable ? (
+            <input value={step.title} onChange={e => onUpdate({ title: e.target.value })} style={{ fontSize:14, fontWeight:600, color:"#1F2937", border:"1px solid #E5E7EB", borderRadius:6, padding:"4px 8px", width:"100%", outline:"none", marginBottom:8 }} />
+          ) : (
+            <div style={{ fontSize:14, fontWeight:600, color:isDone?"#6B7280":"#1F2937", textDecoration:isDone?"line-through":"none", marginBottom:4 }}>{step.title}</div>
+          )}
+          {editable ? (
+            <div>
+              <div style={{ fontSize:11, color:"#9CA3AF", marginBottom:5, fontWeight:600 }}>担当者（複数選択可）</div>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                {MEMBERS.map(m => {
+                  const sel = assignees.includes(m);
+                  const mc = MEMBER_COLORS[m] || {};
+                  return (
+                    <button key={m} onClick={() => toggleAssignee(m)} title={m} style={{ display:"flex", alignItems:"center", gap:5, padding:"4px 8px 4px 4px", borderRadius:9999, border:`2px solid ${sel ? mc.ring||"var(--accent,#22C55E)" : "#E5E7EB"}`, background:sel?(mc.bg||"var(--accent-light,#DCFCE7)"):"white", cursor:"pointer", position:"relative" }}>
+                      <MemberAvatar name={m} size={20} />
+                      <span style={{ fontSize:11, fontWeight:sel?700:500, color:sel?(mc.text||"var(--accent-text,#15803D)"):"#6B7280" }}>{m}</span>
+                      {sel && <span style={{ position:"absolute", top:-4, right:-4, width:14, height:14, borderRadius:"50%", background:mc.ring||"var(--accent,#22C55E)", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5"><path d="M20 6L9 17l-5-5"/></svg></span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div style={{ display:"flex", alignItems:"center", gap:4, flexWrap:"wrap" }}>
+              {assignees.map((m, i) => (
+                <div key={m} style={{ display:"flex", alignItems:"center", gap:4 }}>
+                  <MemberAvatar name={m} size={18} />
+                  <span style={{ fontSize:12, color:"#6B7280" }}>{m}</span>
+                  {i < assignees.length - 1 && <span style={{ fontSize:11, color:"#D1D5DB" }}>·</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6, flexShrink:0 }}>
+          {editable ? (
+            <select value={step.status} onChange={e => onUpdate({ status: e.target.value })} style={{ fontSize:12, border:"1px solid #E5E7EB", borderRadius:8, padding:"4px 8px", color:c.text, background:c.bg }}>
+              {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          ) : (
+            <StatusBadge status={step.status} />
+          )}
+          {editable && (
+            <div style={{ display:"flex", gap:4 }}>
+              <button onClick={() => onMove(-1)} style={{ background:"#F3F4F6", border:"none", borderRadius:4, cursor:"pointer", padding:"2px 8px", fontSize:12 }}>↑</button>
+              <button onClick={() => onMove(1)}  style={{ background:"#F3F4F6", border:"none", borderRadius:4, cursor:"pointer", padding:"2px 8px", fontSize:12 }}>↓</button>
+              <button onClick={() => onRemove()} style={{ background:"#FEE2E2", border:"none", borderRadius:4, cursor:"pointer", padding:"2px 8px", fontSize:12, color:"#DC2626" }}>✕</button>
+            </div>
+          )}
+        </div>
+      </div>
+      <div style={{ display:"flex", justifyContent:"center", padding:"6px 0" }}>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+      </div>
+    </div>
+  );
+}
+
 function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks }) {
   const [flows, setFlows] = React.useState(() =>
     (initialFlows && initialFlows.length > 0) ? initialFlows : loadFromStorage(STORAGE_KEYS.FLOWS, SAMPLE_FLOWS)
@@ -183,104 +268,6 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks }) {
   });
 
   const businessIcons = { "サークル間マッチング事業":"👥", "診断コンテンツ事業":"❓", "SNSメディア事業":"📣" };
-  const stepIcons = ["👥","📸","📝","✈️","📬","✅","🔍","⚙️","📊"];
-
-  function FlowStepCard({ step, idx, flowId, editable }) {
-    const c = STATUS_COLORS[step.status] || {};
-    // Support both legacy `assignee` (string) and new `assignees` (array)
-    const assignees = step.assignees || (step.assignee ? [step.assignee] : [MEMBERS[0]]);
-
-    function toggleAssignee(name) {
-      const current = step.assignees || [step.assignee || MEMBERS[0]];
-      const next = current.includes(name)
-        ? current.length > 1 ? current.filter(m => m !== name) : current  // keep at least 1
-        : [...current, name];
-      updateStep(flowId, step.id, { assignees: next, assignee: next[0] });
-    }
-
-    var isDone = step.status === "完了";
-    return (
-      <div>
-        {/* ② 完了ステップはグレーアウト */}
-        <div style={{ display:"flex", alignItems:"flex-start", gap:14, padding:"14px 18px", background:isDone?"#F3F4F6":"white", borderRadius:14, boxShadow:isDone?"none":"0 1px 6px rgba(0,0,0,0.07)", border:`1px solid ${isDone?"#D1D5DB":c.border||"#E5E7EB"}`, opacity:isDone?0.72:1, transition:"all 0.2s", position:"relative" }}>
-          {/* 完了バッジ */}
-          {isDone && <div style={{ position:"absolute",top:8,right:10,background:"#16A34A",color:"white",borderRadius:9999,padding:"2px 8px",fontSize:10,fontWeight:700 }}>✓ 完了</div>}
-          {/* Step number */}
-          <div style={{ width:32, height:32, borderRadius:"50%", background:isDone?"#9CA3AF":"var(--accent,#06C755)", color:"white", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:14, flexShrink:0, marginTop:2 }}>
-            {isDone ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg> : idx+1}
-          </div>
-          {/* Icon */}
-          <div style={{ width:40, height:40, borderRadius:10, background:"var(--accent-light,#E9FBEF)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>
-            {stepIcons[idx % stepIcons.length]}
-          </div>
-          {/* Content */}
-          <div style={{ flex:1, minWidth:0 }}>
-            {editable ? (
-              <input value={step.title} onChange={e => updateStep(flowId, step.id, { title: e.target.value })} style={{ fontSize:14, fontWeight:600, color:"#1F2937", border:"1px solid #E5E7EB", borderRadius:6, padding:"4px 8px", width:"100%", outline:"none", marginBottom:8 }} />
-            ) : (
-              <div style={{ fontSize:14, fontWeight:600, color:isDone?"#6B7280":"#1F2937", textDecoration:isDone?"line-through":"none", marginBottom:4 }}>{step.title}</div>
-            )}
-
-            {/* Assignees */}
-            {editable ? (
-              <div>
-                <div style={{ fontSize:11, color:"#9CA3AF", marginBottom:5, fontWeight:600 }}>担当者（複数選択可）</div>
-                <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-                  {MEMBERS.map(m => {
-                    const sel = assignees.includes(m);
-                    const mc = MEMBER_COLORS[m] || {};
-                    return (
-                      <button key={m} onClick={() => toggleAssignee(m)} title={m} style={{ display:"flex", alignItems:"center", gap:5, padding:"4px 8px 4px 4px", borderRadius:9999, border:`2px solid ${sel ? mc.ring || "var(--accent,#06C755)" : "#E5E7EB"}`, background: sel ? (mc.bg || "var(--accent-light,#E9FBEF)") : "white", cursor:"pointer", transition:"all 0.15s", position:"relative" }}>
-                        <MemberAvatar name={m} size={20} />
-                        <span style={{ fontSize:11, fontWeight: sel ? 700 : 500, color: sel ? (mc.text || "var(--accent-text,#065F46)") : "#6B7280" }}>{m}</span>
-                        {sel && (
-                          <span style={{ position:"absolute", top:-4, right:-4, width:14, height:14, borderRadius:"50%", background: mc.ring || "var(--accent,#06C755)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5"><path d="M20 6L9 17l-5-5"/></svg>
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-              <div style={{ display:"flex", alignItems:"center", gap:4, flexWrap:"wrap" }}>
-                {assignees.map((m, i) => (
-                  <div key={m} style={{ display:"flex", alignItems:"center", gap:4 }}>
-                    <MemberAvatar name={m} size={18} />
-                    <span style={{ fontSize:12, color:"#6B7280" }}>{m}</span>
-                    {i < assignees.length - 1 && <span style={{ fontSize:11, color:"#D1D5DB" }}>·</span>}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Status */}
-          <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6, flexShrink:0 }}>
-            {editable ? (
-              <select value={step.status} onChange={e => updateStep(flowId, step.id, { status: e.target.value })} style={{ fontSize:12, border:"1px solid #E5E7EB", borderRadius:8, padding:"4px 8px", color:c.text, background:c.bg }}>
-                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            ) : (
-              <StatusBadge status={step.status} />
-            )}
-            {editable && (
-              <div style={{ display:"flex", gap:4 }}>
-                <button onClick={() => moveStep(flowId, step.id, -1)} style={{ background:"#F3F4F6", border:"none", borderRadius:4, cursor:"pointer", padding:"2px 8px", fontSize:12 }}>↑</button>
-                <button onClick={() => moveStep(flowId, step.id, 1)} style={{ background:"#F3F4F6", border:"none", borderRadius:4, cursor:"pointer", padding:"2px 8px", fontSize:12 }}>↓</button>
-                <button onClick={() => removeStep(flowId, step.id)} style={{ background:"#FEE2E2", border:"none", borderRadius:4, cursor:"pointer", padding:"2px 8px", fontSize:12, color:"#DC2626" }}>✕</button>
-              </div>
-            )}
-          </div>
-        </div>
-        {/* Arrow */}
-        <div style={{ display:"flex", justifyContent:"center", padding:"6px 0" }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div>
@@ -349,7 +336,10 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks }) {
             <div style={{ maxWidth:540, margin:"0 auto" }}>
               {[...selectedFlow.steps].sort((a,b) => a.order - b.order).map((step, idx, arr) => (
                 <div key={step.id}>
-                  <FlowStepCard step={step} idx={idx} flowId={selectedFlow.id} editable={!!editingFlow} />
+                  <FlowStepCard step={step} idx={idx} editable={!!editingFlow}
+                    onUpdate={(c) => updateStep(selectedFlow.id, step.id, c)}
+                    onMove={(d) => moveStep(selectedFlow.id, step.id, d)}
+                    onRemove={() => removeStep(selectedFlow.id, step.id)} />
                   {idx === arr.length - 1 && <div style={{ height:16 }}></div>}
                 </div>
               ))}

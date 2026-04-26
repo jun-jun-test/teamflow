@@ -208,25 +208,65 @@ function SidebarDeco() {
   );
 }
 
-// ===== METRIC CARD =====
-function MetricCard({ title, value, unit, sub, subIcon, subColor, icon, iconColor, sparkColor }) {
+// ===== EMOJI PICKER (③) =====
+var EMOJI_SET = [
+  "📈","📉","📊","🎯","✅","⏰","📅","💡","🔍","🔥",
+  "👥","👤","🤝","💪","🏆","⭐","🌟","🚀","💎","⚡",
+  "🌱","🌿","🍀","🌲","💚","🌸","🌻","🍃","🌾","🎋",
+  "📣","📢","💬","📋","📌","📝","📁","🏢","💼","🧩",
+  "✈️","🎵","🎨","🎖","💯","🔑","⚙️","🛠","❓","📬",
+];
+
+function EmojiPicker({ current, onSelect, onClose }) {
   return (
-    <div style={{ background:"white",borderRadius:16,padding:"20px 24px",boxShadow:"0 1px 8px rgba(0,0,0,0.07)",flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:4 }}>
+    <div style={{ position:"absolute",zIndex:600,background:"white",border:"1px solid #E5E7EB",borderRadius:14,padding:12,boxShadow:"0 8px 32px rgba(0,0,0,0.16)",width:248,top:"110%",right:0 }} onClick={e => e.stopPropagation()}>
+      <div style={{ fontSize:11,color:"#9CA3AF",marginBottom:8,fontWeight:600 }}>アイコンを選択</div>
+      <div style={{ display:"grid",gridTemplateColumns:"repeat(8,1fr)",gap:3 }}>
+        {EMOJI_SET.map(function(e) {
+          return (
+            <button key={e} onClick={function(){ onSelect(e); onClose(); }}
+              style={{ padding:5,borderRadius:7,border:e===current?"2px solid var(--accent,#22C55E)":"2px solid transparent",background:e===current?"var(--accent-light,#DCFCE7)":"transparent",cursor:"pointer",fontSize:17,lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center" }}>
+              {e}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ===== METRIC CARD (② 先週比編集・③ アイコン変更対応) =====
+function MetricCard({ title, value, unit, sub, subIcon, subColor, icon, iconColor, sparkColor, onIconClick, editSub, subInputVal, onSubChange, onSubSave, onSubClick }) {
+  return (
+    <div style={{ background:"white",borderRadius:16,padding:"20px 24px",boxShadow:"var(--card-shadow,0 2px 16px rgba(34,197,94,0.10))",flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:4 }}>
       <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start" }}>
         <div>
           <div style={{ fontSize:13,color:"#6B7280",marginBottom:4 }}>{title}</div>
-          <div style={{ fontSize:36,fontWeight:800,color:iconColor||"#4CAF50",lineHeight:1 }}>
+          <div style={{ fontSize:36,fontWeight:800,color:iconColor||"#22C55E",lineHeight:1 }}>
             {value}<span style={{ fontSize:18,fontWeight:700 }}>{unit}</span>
           </div>
         </div>
-        <div style={{ width:48,height:48,borderRadius:12,background:iconColor?`${iconColor}18`:"var(--accent-light,#E9FBEF)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22 }}>
+        {/* ③ アイコンクリックで絵文字ピッカー表示 */}
+        <div onClick={onIconClick} style={{ width:48,height:48,borderRadius:12,background:iconColor?`${iconColor}18`:"var(--accent-light,#DCFCE7)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,cursor:onIconClick?"pointer":"default",position:"relative" }}
+          title={onIconClick?"アイコンを変更":undefined}>
           {icon}
+          {onIconClick && <span style={{ position:"absolute",bottom:-1,right:-1,fontSize:9,background:"white",borderRadius:"50%",lineHeight:1,padding:1 }}>✎</span>}
         </div>
       </div>
       {sparkColor && <div style={{ marginTop:4 }}><Sparkline color={sparkColor} /></div>}
+      {/* ② 先週比クリックで編集 */}
       <div style={{ fontSize:12,color:subColor||"#6B7280",marginTop:4,display:"flex",alignItems:"center",gap:4 }}>
         {subIcon && <span>{subIcon}</span>}
-        {sub}
+        {editSub ? (
+          <input autoFocus value={subInputVal} onChange={e=>onSubChange(e.target.value)}
+            onBlur={onSubSave} onKeyDown={e=>{if(e.key==="Enter")onSubSave();}}
+            style={{ fontSize:12,border:"none",borderBottom:"1.5px solid var(--accent,#22C55E)",outline:"none",width:110,background:"transparent",color:subColor||"#6B7280",padding:"1px 0" }} />
+        ) : (
+          <span onClick={onSubClick} style={{ cursor:onSubClick?"pointer":"default" }} title={onSubClick?"クリックして編集":undefined}>
+            {sub}
+            {onSubClick && <span style={{ marginLeft:3,opacity:0.35,fontSize:9 }}>✎</span>}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -234,5 +274,5 @@ function MetricCard({ title, value, unit, sub, subIcon, subColor, icon, iconColo
 
 Object.assign(window, {
   StatusBadge, PriorityBadge, ProgressBar, MemberAvatar, ProfileModal,
-  Sparkline, SidebarDeco, MetricCard, FACE_LIST
+  Sparkline, SidebarDeco, MetricCard, EmojiPicker, FACE_LIST, EMOJI_SET
 });

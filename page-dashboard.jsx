@@ -16,14 +16,33 @@ function DashboardPage({ currentUser, tasks, setTasks, kpis, setKpis, isMobile, 
   // ① KPI管理
   const [kpiModalOpen, setKpiModalOpen] = React.useState(false);
   const [editingKpi,   setEditingKpi]   = React.useState(null);
-  const [kpiForm,      setKpiForm]      = React.useState({ title:"", targetValue:10, currentValue:0, unit:"件", relatedProject:"" });
+  const [kpiForm,      setKpiForm]      = React.useState({ title:"", targetValue:10, currentValue:0, unit:"件", relatedProject:"", icon:"🎯" });
+  const [kpiIconPicker, setKpiIconPicker] = React.useState(false);
   // ⑥ タスク編集
   const [taskEditId,     setTaskEditId]     = React.useState(null);
   const [taskEditFields, setTaskEditFields] = React.useState({});
+  // ② 先週比テキスト編集
+  const [metricSubs,  setMetricSubs]  = React.useState(() => loadFromStorage('kaiwai_metric_subs', { allPct:"先週比 ↑8%", kpiPct:"先週比 ↑4%", done:"先週比 +6件 ↑", late:"先週比 +1件 ↑" }));
+  const [editingSub,  setEditingSub]  = React.useState(null);
+  const [subInputVal, setSubInputVal] = React.useState("");
+  // ③ アイコン編集
+  const [metricIcons, setMetricIcons] = React.useState(() => loadFromStorage('kaiwai_metric_icons', { allPct:"📈", kpiPct:"🎯", done:"✅", late:"⏰" }));
+  const [iconPicker,  setIconPicker]  = React.useState(null);
+
+  function startSubEdit(key) { setEditingSub(key); setSubInputVal(metricSubs[key]||""); }
+  function saveSubEdit() {
+    if (!editingSub) return;
+    var u = Object.assign({}, metricSubs); u[editingSub] = subInputVal;
+    setMetricSubs(u); saveToStorage('kaiwai_metric_subs', u); setEditingSub(null);
+  }
+  function saveIcon(key, emoji) {
+    var u = Object.assign({}, metricIcons); u[key] = emoji;
+    setMetricIcons(u); saveToStorage('kaiwai_metric_icons', u); setIconPicker(null);
+  }
 
   const LIMIT   = 3;
-  const G  = "var(--accent,#06C755)";
-  const GL = "var(--accent-light,#E9FBEF)";
+  const G  = "var(--accent,#22C55E)";
+  const GL = "var(--accent-light,#DCFCE7)";
 
   const allPct    = calcProgress(tasks);
   const kpiPct    = kpis.length ? Math.round(kpis.reduce((s,k) => s+Math.min(100,k.currentValue/k.targetValue*100),0)/kpis.length) : 0;
@@ -45,12 +64,12 @@ function DashboardPage({ currentUser, tasks, setTasks, kpis, setKpis, isMobile, 
   // ① KPI functions
   function openKpiNew() {
     setEditingKpi(null);
-    setKpiForm({ title:"", targetValue:10, currentValue:0, unit:"件", relatedProject:PROJECTS[0]||"" });
+    setKpiForm({ title:"", targetValue:10, currentValue:0, unit:"件", relatedProject:PROJECTS[0]||"", icon:"🎯" });
     setKpiModalOpen(true);
   }
   function openKpiEdit(k) {
     setEditingKpi(k);
-    setKpiForm({ title:k.title, targetValue:k.targetValue, currentValue:k.currentValue, unit:k.unit||"件", relatedProject:k.relatedProject||"" });
+    setKpiForm({ title:k.title, targetValue:k.targetValue, currentValue:k.currentValue, unit:k.unit||"件", relatedProject:k.relatedProject||"", icon:k.icon||"🎯" });
     setKpiModalOpen(true);
   }
   function saveKpi() {
@@ -93,12 +112,33 @@ function DashboardPage({ currentUser, tasks, setTasks, kpis, setKpis, isMobile, 
         <p style={{ fontSize:"var(--font-sz,14px)",color:"#6B7280" }}>チーム全体の進捗と今週の目標を確認できます。</p>
       </div>
 
-      {/* Metric cards */}
+      {/* Metric cards ② 先週比クリック編集 / ③ アイコンクリック変更 */}
       <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1fr 1fr 1fr 1fr",gap:"var(--gap,16px)",marginBottom:"var(--gap,16px)" }}>
-        <MetricCard title="全体進捗率"      value={allPct}           unit="%" sub="先週比 ↑8%"     sparkColor={G} icon="📈" iconColor="#06C755" />
-        <MetricCard title="今週のKPI達成率" value={kpiPct}           unit="%" sub="先週比 ↑4%"     sparkColor={G} icon="🎯" iconColor="#06C755" />
-        <MetricCard title="完了タスク"      value={doneTasks.length} unit="件" sub="先週比 +6件 ↑" subIcon="✅" icon="✓" iconColor="#06C755" />
-        <MetricCard title="遅延タスク"      value={lateTasks.length} unit="件" sub="先週比 +1件 ↑" subIcon="⚠️" subColor="#DC2626" icon="⏰" iconColor="#EF4444" />
+        {[
+          { key:"allPct", title:"全体進捗率",      value:allPct,           unit:"%",  sparkColor:G, iconColor:"#22C55E" },
+          { key:"kpiPct", title:"今週のKPI達成率", value:kpiPct,           unit:"%",  sparkColor:G, iconColor:"#22C55E" },
+          { key:"done",   title:"完了タスク",      value:doneTasks.length, unit:"件", iconColor:"#22C55E" },
+          { key:"late",   title:"遅延タスク",      value:lateTasks.length, unit:"件", subColor:"#DC2626", iconColor:"#EF4444" },
+        ].map(function(m) {
+          return (
+            <div key={m.key} style={{ position:"relative" }}>
+              <MetricCard
+                title={m.title} value={m.value} unit={m.unit}
+                sub={metricSubs[m.key]} subColor={m.subColor} sparkColor={m.sparkColor}
+                icon={metricIcons[m.key]} iconColor={m.iconColor}
+                editSub={editingSub===m.key}
+                subInputVal={editingSub===m.key ? subInputVal : ""}
+                onSubChange={setSubInputVal}
+                onSubSave={saveSubEdit}
+                onSubClick={function(){ startSubEdit(m.key); }}
+                onIconClick={function(){ setIconPicker(iconPicker===m.key ? null : m.key); }}
+              />
+              {iconPicker===m.key && (
+                <EmojiPicker current={metricIcons[m.key]} onSelect={function(e){ saveIcon(m.key,e); }} onClose={function(){ setIconPicker(null); }} />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* KPI + Next Tasks */}
@@ -117,7 +157,7 @@ function DashboardPage({ currentUser, tasks, setTasks, kpis, setKpis, isMobile, 
                 <div key={k.id}>
                   <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6 }}>
                     <div style={{ display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0 }}>
-                      <div style={{ width:32,height:32,borderRadius:8,background:GL,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0 }}>{kpiIcons[idx%kpiIcons.length]}</div>
+                      <div style={{ width:32,height:32,borderRadius:8,background:GL,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0 }}>{k.icon||kpiIcons[idx%kpiIcons.length]}</div>
                       <div style={{ flex:1,minWidth:0 }}>
                         <div style={{ fontSize:13,fontWeight:600,color:"#1F2937",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{k.title}</div>
                         <div style={{ fontSize:11,color:"#9CA3AF" }}>達成率 {pct}% · {k.currentValue}/{k.targetValue}{k.unit}</div>
@@ -206,6 +246,14 @@ function DashboardPage({ currentUser, tasks, setTasks, kpis, setKpis, isMobile, 
         <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:16 }}>
           <div style={{ background:"white",borderRadius:20,padding:"28px 32px",maxWidth:440,width:"100%",boxShadow:"0 20px 60px rgba(0,0,0,0.2)" }}>
             <h3 style={{ fontSize:17,fontWeight:700,color:"#1F2937",marginBottom:20 }}>{editingKpi ? "KPIを編集" : "＋ KPIを追加"}</h3>
+            {/* ③ KPIアイコン選択 */}
+            <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:16 }}>
+              <label style={{ fontSize:13,fontWeight:600,color:"#374151" }}>アイコン</label>
+              <div style={{ position:"relative" }}>
+                <button onClick={()=>setKpiIconPicker(!kpiIconPicker)} style={{ width:40,height:40,borderRadius:10,background:GL,border:"1.5px solid #E5E7EB",fontSize:20,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>{kpiForm.icon||"🎯"}</button>
+                {kpiIconPicker && <EmojiPicker current={kpiForm.icon} onSelect={e=>{setKpiForm(f=>({...f,icon:e})); setKpiIconPicker(false);}} onClose={()=>setKpiIconPicker(false)} />}
+              </div>
+            </div>
             <label style={{ fontSize:13,fontWeight:600,color:"#374151",display:"block",marginBottom:6 }}>KPI名 <span style={{ color:"#EF4444" }}>*</span></label>
             <input value={kpiForm.title} onChange={e=>setKpiForm(f=>({...f,title:e.target.value}))} placeholder="例：30チームへDM送信" style={{ width:"100%",border:"1.5px solid #E5E7EB",borderRadius:10,padding:"10px 12px",fontSize:13,outline:"none",marginBottom:14,boxSizing:"border-box" }} onFocus={e=>e.target.style.borderColor=G} onBlur={e=>e.target.style.borderColor="#E5E7EB"} />
             <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14 }}>
