@@ -10,9 +10,8 @@ function SeeAllBtn({ expanded, count, limit, onToggle }) {
   );
 }
 
-function DashboardPage({ currentUser, tasks, setTasks, kpis, setKpis, isMobile }) {
+function DashboardPage({ currentUser, tasks, setTasks, kpis, setKpis, isMobile, appSettings }) {
   const [showAllNext,   setShowAllNext]   = React.useState(false);
-  const [showAllMember, setShowAllMember] = React.useState(false);
   const [showAllProj,   setShowAllProj]   = React.useState(false);
   // ① KPI管理
   const [kpiModalOpen, setKpiModalOpen] = React.useState(false);
@@ -35,7 +34,7 @@ function DashboardPage({ currentUser, tasks, setTasks, kpis, setKpis, isMobile }
   const visibleNext  = showAllNext ? nextTasks : nextTasks.slice(0,LIMIT);
 
   const memberProgress = MEMBERS.map(m => ({ name:m, pct:calcProgress(tasks.filter(t=>t.assignee===m)) }));
-  const visibleMembers = showAllMember ? memberProgress : memberProgress.slice(0,LIMIT);
+  const visibleMembers = memberProgress; // ③ 常に全員表示
 
   const projectProgress = BUSINESSES.map(b => { const bt=tasks.filter(t=>t.business===b); return { name:b, pct:calcProgress(bt), count:bt.filter(t=>t.status==="進行中").length }; });
   const visibleProj     = showAllProj ? projectProgress : projectProgress.slice(0,LIMIT);
@@ -166,8 +165,7 @@ function DashboardPage({ currentUser, tasks, setTasks, kpis, setKpis, isMobile }
       <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:"var(--gap,16px)" }}>
         <div style={{ background:"var(--card-bg,white)",borderRadius:"var(--card-radius,16px)",padding:"var(--card-pad,20px 24px)",boxShadow:"var(--card-shadow,0 2px 12px rgba(0,0,0,0.08))",border:"var(--card-border,none)" }}>
           <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
-            <span style={{ fontWeight:700,fontSize:16,color:"#1F2937" }}>メンバー別進捗</span>
-            <SeeAllBtn expanded={showAllMember} count={memberProgress.length} limit={LIMIT} onToggle={() => setShowAllMember(v=>!v)} />
+            <span style={{ fontWeight:700,fontSize:16,color:"#1F2937" }}>{(appSettings&&appSettings.dashboardSections&&appSettings.dashboardSections.memberProgress)||"メンバー別進捗"}</span>
           </div>
           <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
             {visibleMembers.map(mp => (

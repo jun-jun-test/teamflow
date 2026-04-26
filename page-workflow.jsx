@@ -66,6 +66,37 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks }) {
   const [newFlowBiz, setNewFlowBiz] = React.useState(BUSINESSES[0]);
   const [showAllRT, setShowAllRT] = React.useState(false);
 
+  // ① 関連タスク state
+  const RT_KEY = "kaiwai_related_tasks";
+  const [relatedTasks,  setRelatedTasks]  = React.useState(() => loadFromStorage(RT_KEY, RELATED_TASKS));
+  const [rtModalOpen,   setRtModalOpen]   = React.useState(false);
+  const [editingRt,     setEditingRt]     = React.useState(null);
+  const [rtForm,        setRtForm]        = React.useState({ title:"", assignee:MEMBERS[0], dueDate:"", status:"未着手" });
+
+  function saveRelatedTasks(updated) { setRelatedTasks(updated); saveToStorage(RT_KEY, updated); }
+  function openRtNew() {
+    setEditingRt(null);
+    setRtForm({ title:"", assignee:MEMBERS[0], dueDate:new Date().toISOString().split("T")[0], status:"未着手" });
+    setRtModalOpen(true);
+  }
+  function openRtEdit(rt) {
+    setEditingRt(rt);
+    setRtForm({ title:rt.title, assignee:rt.assignee, dueDate:rt.dueDate||"", status:rt.status });
+    setRtModalOpen(true);
+  }
+  function saveRt() {
+    if (!rtForm.title.trim()) return;
+    var updated = editingRt
+      ? relatedTasks.map(r => r.id===editingRt.id ? { ...r, ...rtForm } : r)
+      : [...relatedTasks, { id:genId(), ...rtForm }];
+    saveRelatedTasks(updated);
+    setRtModalOpen(false);
+  }
+  function deleteRt(id) {
+    if (!window.confirm("この関連タスクを削除しますか？")) return;
+    saveRelatedTasks(relatedTasks.filter(r => r.id!==id));
+  }
+
   // ── Bottleneck state ──────────────────────────────────────────
   const BN_KEY = "kaiwai_bottlenecks";
   const [bottlenecks, setBottlenecks] = React.useState(() =>
@@ -167,11 +198,17 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks }) {
       updateStep(flowId, step.id, { assignees: next, assignee: next[0] });
     }
 
+    var isDone = step.status === "完了";
     return (
       <div>
-        <div style={{ display:"flex", alignItems:"flex-start", gap:14, padding:"14px 18px", background:"white", borderRadius:14, boxShadow:"0 1px 6px rgba(0,0,0,0.07)", border:`1px solid ${c.border || "#E5E7EB"}` }}>
+        {/* ② 完了ステップはグレーアウト */}
+        <div style={{ display:"flex", alignItems:"flex-start", gap:14, padding:"14px 18px", background:isDone?"#F3F4F6":"white", borderRadius:14, boxShadow:isDone?"none":"0 1px 6px rgba(0,0,0,0.07)", border:`1px solid ${isDone?"#D1D5DB":c.border||"#E5E7EB"}`, opacity:isDone?0.72:1, transition:"all 0.2s", position:"relative" }}>
+          {/* 完了バッジ */}
+          {isDone && <div style={{ position:"absolute",top:8,right:10,background:"#16A34A",color:"white",borderRadius:9999,padding:"2px 8px",fontSize:10,fontWeight:700 }}>✓ 完了</div>}
           {/* Step number */}
-          <div style={{ width:32, height:32, borderRadius:"50%", background:"var(--accent,#06C755)", color:"white", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:14, flexShrink:0, marginTop:2 }}>{idx + 1}</div>
+          <div style={{ width:32, height:32, borderRadius:"50%", background:isDone?"#9CA3AF":"var(--accent,#06C755)", color:"white", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:14, flexShrink:0, marginTop:2 }}>
+            {isDone ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg> : idx+1}
+          </div>
           {/* Icon */}
           <div style={{ width:40, height:40, borderRadius:10, background:"var(--accent-light,#E9FBEF)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>
             {stepIcons[idx % stepIcons.length]}
@@ -181,7 +218,7 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks }) {
             {editable ? (
               <input value={step.title} onChange={e => updateStep(flowId, step.id, { title: e.target.value })} style={{ fontSize:14, fontWeight:600, color:"#1F2937", border:"1px solid #E5E7EB", borderRadius:6, padding:"4px 8px", width:"100%", outline:"none", marginBottom:8 }} />
             ) : (
-              <div style={{ fontSize:14, fontWeight:600, color:"#1F2937", marginBottom:4 }}>{step.title}</div>
+              <div style={{ fontSize:14, fontWeight:600, color:isDone?"#6B7280":"#1F2937", textDecoration:isDone?"line-through":"none", marginBottom:4 }}>{step.title}</div>
             )}
 
             {/* Assignees */}
@@ -283,9 +320,9 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks }) {
       {showBuilder && (
         <div style={{ background:"white", borderRadius:14, padding:"16px 20px", boxShadow:"0 1px 8px rgba(0,0,0,0.07)", marginBottom:20, display:"flex", gap:12, flexWrap:"wrap", alignItems:"center" }}>
           <input value={newFlowTitle} onChange={e => setNewFlowTitle(e.target.value)} placeholder="フロー名を入力..." style={{ flex:1, minWidth:200, border:"1.5px solid #E5E7EB", borderRadius:8, padding:"8px 12px", fontSize:13, outline:"none" }} />
-          <select value={newFlowBiz} onChange={e => setNewFlowBiz(e.target.value)} style={{ border:"1.5px solid #E5E7EB", borderRadius:8, padding:"8px 12px", fontSize:13 }}>
-            {BUSINESSES.map(b => <option key={b} value={b}>{b}</option>)}
-          </select>
+          {/* ⑤ 事業名を自由入力（既存候補も選択可） */}
+          <input value={newFlowBiz} onChange={e => setNewFlowBiz(e.target.value)} list="flow-biz-dl" placeholder="事業名を入力または選択" style={{ minWidth:180, border:"1.5px solid #E5E7EB", borderRadius:8, padding:"8px 12px", fontSize:13, outline:"none" }} />
+          <datalist id="flow-biz-dl">{BUSINESSES.map(b => <option key={b} value={b}/>)}</datalist>
           <button onClick={addFlow} style={{ padding:"8px 20px", borderRadius:8, background:"#4CAF50", color:"white", border:"none", fontSize:13, fontWeight:700, cursor:"pointer" }}>作成</button>
           <button onClick={() => setShowBuilder(false)} style={{ padding:"8px 14px", borderRadius:8, background:"#F3F4F6", color:"#6B7280", border:"none", fontSize:13, cursor:"pointer" }}>キャンセル</button>
         </div>
@@ -336,10 +373,12 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks }) {
                 <span style={{ fontWeight:700, fontSize:15, color:"#1F2937" }}>関連タスク</span>
                 <SeeAllBtn expanded={showAllRT} count={RELATED_TASKS.length} limit={3} onToggle={() => setShowAllRT(v=>!v)} />
               </div>
+              {/* ① 関連タスク一覧 */}
               <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                {(showAllRT ? RELATED_TASKS : RELATED_TASKS.slice(0,3)).map(rt => (
+                {relatedTasks.length===0 && <div style={{ color:"#9CA3AF",fontSize:13 }}>関連タスクがありません</div>}
+                {(showAllRT ? relatedTasks : relatedTasks.slice(0,3)).map(rt => (
                   <div key={rt.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 0", borderBottom:"1px solid #F9FAFB" }}>
-                    <span style={{ width:6, height:6, borderRadius:"50%", background:"#4CAF50", display:"inline-block", flexShrink:0 }}></span>
+                    <span style={{ width:6,height:6,borderRadius:"50%",background:"#4CAF50",display:"inline-block",flexShrink:0 }}></span>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ fontSize:13, fontWeight:500, color:"#1F2937", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{rt.title}</div>
                       <div style={{ fontSize:11, color:"#9CA3AF", display:"flex", alignItems:"center", gap:4, marginTop:2 }}>
@@ -348,10 +387,19 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks }) {
                       </div>
                     </div>
                     <StatusBadge status={rt.status} />
+                    <button onClick={() => openRtEdit(rt)} style={{ background:"var(--accent-light,#E9FBEF)",border:"none",borderRadius:6,padding:"3px 7px",fontSize:11,color:"var(--accent,#06C755)",cursor:"pointer" }}>編集</button>
+                    <button onClick={() => deleteRt(rt.id)} style={{ background:"#FEE2E2",border:"none",borderRadius:6,padding:"3px 6px",fontSize:11,color:"#DC2626",cursor:"pointer" }}>✕</button>
                   </div>
                 ))}
               </div>
-              <button style={{ width:"100%", marginTop:12, padding:"8px", border:"1px solid #E5E7EB", borderRadius:8, background:"white", color:"#6B7280", fontSize:12, cursor:"pointer" }}>タスク一覧を開く ›</button>
+              <div style={{ display:"flex",gap:8,marginTop:12 }}>
+                {relatedTasks.length > 3 && (
+                  <button onClick={() => setShowAllRT(v=>!v)} style={{ flex:1, padding:"7px", border:"1px solid #E5E7EB", borderRadius:8, background:"white", color:"#6B7280", fontSize:12, cursor:"pointer" }}>
+                    {showAllRT ? "閉じる ↑" : `すべて見る（${relatedTasks.length}件）`}
+                  </button>
+                )}
+                <button onClick={openRtNew} style={{ flex:1, padding:"7px", border:"none", borderRadius:8, background:"var(--accent,#06C755)", color:"white", fontSize:12, fontWeight:700, cursor:"pointer" }}>＋ 追加</button>
+              </div>
             </div>
 
             {/* Bottlenecks */}
@@ -496,6 +544,50 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks }) {
           BN_PRIORITIES={BN_PRIORITIES}
           onClose={() => { setShowBnForm(false); setBnEdit(null); }}
         />
+      )}
+
+      {/* ① 関連タスク 追加・編集モーダル */}
+      {rtModalOpen && (
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:16 }}>
+          <div style={{ background:"white",borderRadius:20,padding:"28px 32px",maxWidth:440,width:"100%",boxShadow:"0 20px 60px rgba(0,0,0,0.2)" }}>
+            <h3 style={{ fontSize:17,fontWeight:700,color:"#1F2937",marginBottom:20 }}>{editingRt ? "関連タスクを編集" : "＋ 関連タスクを追加"}</h3>
+
+            <label style={{ fontSize:13,fontWeight:600,color:"#374151",display:"block",marginBottom:6 }}>タスク名 <span style={{ color:"#EF4444" }}>*</span></label>
+            <input value={rtForm.title} onChange={e=>setRtForm(f=>({...f,title:e.target.value}))} placeholder="例：ターゲットサークル候補をリスト化" style={{ width:"100%",border:"1.5px solid #E5E7EB",borderRadius:10,padding:"10px 12px",fontSize:13,outline:"none",marginBottom:14,boxSizing:"border-box" }} onFocus={e=>e.target.style.borderColor="var(--accent,#06C755)"} onBlur={e=>e.target.style.borderColor="#E5E7EB"} />
+
+            <label style={{ fontSize:13,fontWeight:600,color:"#374151",display:"block",marginBottom:6 }}>担当者</label>
+            <div style={{ display:"flex",gap:8,flexWrap:"wrap",marginBottom:14 }}>
+              {MEMBERS.map(m => {
+                var sel = rtForm.assignee===m;
+                var mc = MEMBER_COLORS[m]||{};
+                return (
+                  <button key={m} onClick={()=>setRtForm(f=>({...f,assignee:m}))} style={{ display:"flex",alignItems:"center",gap:5,padding:"4px 10px 4px 4px",borderRadius:9999,border:`2px solid ${sel?mc.ring||"var(--accent,#06C755)":"#E5E7EB"}`,background:sel?(mc.bg||"var(--accent-light,#E9FBEF)"):"white",cursor:"pointer" }}>
+                    <MemberAvatar name={m} size={20} />
+                    <span style={{ fontSize:12,fontWeight:sel?700:500,color:sel?(mc.text||"var(--accent-text,#065F46)"):"#6B7280" }}>{m}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14 }}>
+              <div>
+                <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:4 }}>期限</label>
+                <input type="date" value={rtForm.dueDate} onChange={e=>setRtForm(f=>({...f,dueDate:e.target.value}))} style={{ width:"100%",border:"1.5px solid #E5E7EB",borderRadius:8,padding:"8px 10px",fontSize:13,outline:"none",boxSizing:"border-box" }} />
+              </div>
+              <div>
+                <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:4 }}>ステータス</label>
+                <select value={rtForm.status} onChange={e=>setRtForm(f=>({...f,status:e.target.value}))} style={{ width:"100%",border:"1.5px solid #E5E7EB",borderRadius:8,padding:"8px 10px",fontSize:13,outline:"none" }}>
+                  {STATUS_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display:"flex",gap:10 }}>
+              <button onClick={()=>setRtModalOpen(false)} style={{ flex:1,padding:12,borderRadius:10,border:"1.5px solid #E5E7EB",background:"white",color:"#6B7280",fontSize:14,fontWeight:600,cursor:"pointer" }}>キャンセル</button>
+              <button onClick={saveRt} style={{ flex:1,padding:12,borderRadius:10,border:"none",background:"var(--accent,#06C755)",color:"white",fontSize:14,fontWeight:700,cursor:"pointer" }}>{editingRt?"保存する":"追加する"}</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

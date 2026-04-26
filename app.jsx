@@ -1,16 +1,21 @@
 function App() {
-  const [currentUser,  setCurrentUser]  = React.useState(() => loadFromStorage(STORAGE_KEYS.USER, null));
-  const [page,         setPage]         = React.useState("dashboard");
-  const [tasks,        setTasks]        = React.useState(() => loadFromStorage(STORAGE_KEYS.TASKS, SAMPLE_TASKS));
-  const [kpis,         setKpis]         = React.useState(() => loadFromStorage(STORAGE_KEYS.KPIS,  SAMPLE_KPIS));
-  const [isMobile,     setIsMobile]     = React.useState(window.innerWidth < 768);
-  const [dbFlows,      setDbFlows]      = React.useState(null);
-  const [dbBottlenecks,setDbBottlenecks]= React.useState(null);
-  const [profileOpen,  setProfileOpen]  = React.useState(false);
-  const [memberPrefs,  setMemberPrefs]  = React.useState(() => {
+  const [currentUser,   setCurrentUser]   = React.useState(() => loadFromStorage(STORAGE_KEYS.USER, null));
+  const [page,          setPage]          = React.useState("dashboard");
+  const [tasks,         setTasks]         = React.useState(() => loadFromStorage(STORAGE_KEYS.TASKS, SAMPLE_TASKS));
+  const [kpis,          setKpis]          = React.useState(() => loadFromStorage(STORAGE_KEYS.KPIS,  SAMPLE_KPIS));
+  const [isMobile,      setIsMobile]      = React.useState(window.innerWidth < 768);
+  const [dbFlows,       setDbFlows]       = React.useState(null);
+  const [dbBottlenecks, setDbBottlenecks] = React.useState(null);
+  const [profileOpen,   setProfileOpen]   = React.useState(false);
+  const [memberPrefs,   setMemberPrefs]   = React.useState(() => {
     var p = loadFromStorage('kaiwai_member_prefs', {});
     applyMemberPrefs(p);
     return p;
+  });
+  const [appSettings,   setAppSettings]   = React.useState(() => {
+    var s = loadFromStorage('kaiwai_app_settings', null);
+    if (s) applyAppSettings(s);
+    return window.APP_SETTINGS;
   });
 
   React.useEffect(() => {
@@ -66,6 +71,11 @@ function App() {
     applyMemberPrefs(updated);
   }
 
+  function handleSaveSettings(newSettings) {
+    applyAppSettings(newSettings);
+    setAppSettings(Object.assign({}, newSettings));
+  }
+
   if (!currentUser) {
     return <NameSelectPage onSelect={handleSelectUser} isMobile={isMobile} />;
   }
@@ -74,11 +84,12 @@ function App() {
 
   function renderPage() {
     switch (page) {
-      case "dashboard": return <DashboardPage currentUser={currentUser} tasks={tasks} setTasks={setTasks} kpis={kpis} setKpis={setKpis} isMobile={isMobile} />;
+      case "dashboard": return <DashboardPage currentUser={currentUser} tasks={tasks} setTasks={setTasks} kpis={kpis} setKpis={setKpis} isMobile={isMobile} appSettings={appSettings} />;
       case "mytasks":   return <MyTasksPage   currentUser={currentUser} tasks={tasks} setTasks={setTasks} isMobile={isMobile} />;
       case "workflow":  return <WorkflowPage  tasks={tasks} isMobile={isMobile} initialFlows={dbFlows} initialBottlenecks={dbBottlenecks} />;
       case "create":    return <TaskCreatePage currentUser={currentUser} tasks={tasks} setTasks={setTasks} isMobile={isMobile} />;
-      default:          return <DashboardPage currentUser={currentUser} tasks={tasks} setTasks={setTasks} kpis={kpis} setKpis={setKpis} isMobile={isMobile} />;
+      case "settings":  return <SettingsPage  appSettings={appSettings} onSaveSettings={handleSaveSettings} isMobile={isMobile} />;
+      default:          return <DashboardPage currentUser={currentUser} tasks={tasks} setTasks={setTasks} kpis={kpis} setKpis={setKpis} isMobile={isMobile} appSettings={appSettings} />;
     }
   }
 

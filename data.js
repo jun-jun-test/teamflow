@@ -287,3 +287,25 @@ window.applyMemberPrefs = function(prefs) {
 };
 
 applyMemberPrefs(loadFromStorage('kaiwai_member_prefs', {}));
+
+// ===== APP SETTINGS =====
+window.APP_SETTINGS_DEFAULT = {
+  appTitle: "チーム進捗ツール",
+  navLabels: { dashboard:"ダッシュボード", mytasks:"自分のタスク", workflow:"ワークフロー", create:"タスク作成", settings:"設定" },
+  dashboardSections: { kpi:"今週のKPI", nextTasks:"次にやるべきタスク", memberProgress:"メンバー別進捗", projectProgress:"プロジェクト別進捗" },
+};
+
+window.APP_SETTINGS = {
+  appTitle: "チーム進捗ツール",
+  navLabels: { dashboard:"ダッシュボード", mytasks:"自分のタスク", workflow:"ワークフロー", create:"タスク作成", settings:"設定" },
+  dashboardSections: { kpi:"今週のKPI", nextTasks:"次にやるべきタスク", memberProgress:"メンバー別進捗", projectProgress:"プロジェクト別進捗" },
+};
+
+window.applyAppSettings = function(s) {
+  if (!s) return;
+  window.APP_SETTINGS = s;
+  if (s.businesses && s.businesses.length) window.BUSINESSES = s.businesses;
+  if (s.projects   && s.projects.length)   window.PROJECTS   = s.projects;
+};
+
+applyAppSettings(loadFromStorage('kaiwai_app_settings', null));
