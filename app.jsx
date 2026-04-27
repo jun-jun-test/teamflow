@@ -61,40 +61,80 @@ function App() {
     if (!window.db) return;
     loadAllFromDB().then(function(dbData) {
       if (!dbData) return;
-      // ── 既存データ ──
+
+      // Supabaseにデータがあれば使う。なければlocalStorageのデータをSupabaseへ送る。
+      // ── Tasks ──
       if (dbData.tasks.length > 0) {
         setTasks(dbData.tasks);
         try { localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(dbData.tasks)); } catch(e) {}
+      } else {
+        var lt = loadFromStorage(STORAGE_KEYS.TASKS, []);
+        if (lt.length > 0) window._syncToDB('tasks', lt, 'upsert');
       }
+
+      // ── KPIs ──
       if (dbData.kpis.length > 0) {
         setKpis(dbData.kpis);
         try { localStorage.setItem(STORAGE_KEYS.KPIS, JSON.stringify(dbData.kpis)); } catch(e) {}
+      } else {
+        var lk = loadFromStorage(STORAGE_KEYS.KPIS, []);
+        if (lk.length > 0) window._syncToDB('kpis', lk, 'upsert');
       }
+
+      // ── Flows ──
       if (dbData.flows.length > 0) {
         setDbFlows(dbData.flows);
         try { localStorage.setItem(STORAGE_KEYS.FLOWS, JSON.stringify(dbData.flows)); } catch(e) {}
+      } else {
+        var lf = loadFromStorage(STORAGE_KEYS.FLOWS, []);
+        if (lf.length > 0) window._syncToDB('flows', lf, 'replace');
       }
+
+      // ── Bottlenecks ──
       if (dbData.bottlenecks.length > 0) {
         setDbBottlenecks(dbData.bottlenecks);
         try { localStorage.setItem('kaiwai_bottlenecks', JSON.stringify(dbData.bottlenecks)); } catch(e) {}
+      } else {
+        var lb = loadFromStorage('kaiwai_bottlenecks', []);
+        if (lb.length > 0) window._syncToDB('bottlenecks', lb, 'replace');
       }
-      // ── 新規同期データ ──
+
+      // ── Related Tasks ──
       if (dbData.relatedTasks && dbData.relatedTasks.length > 0) {
         setDbRelatedTasks(dbData.relatedTasks);
         try { localStorage.setItem('kaiwai_related_tasks', JSON.stringify(dbData.relatedTasks)); } catch(e) {}
+      } else {
+        var lr = loadFromStorage('kaiwai_related_tasks', []);
+        if (lr.length > 0) window._syncToDB('related_tasks', lr, 'replace');
       }
+
+      // ── Member Prefs ──
       if (dbData.memberPrefs) {
         applyMemberPrefs(dbData.memberPrefs);
         setMemberPrefs(dbData.memberPrefs);
         try { localStorage.setItem('kaiwai_member_prefs', JSON.stringify(dbData.memberPrefs)); } catch(e) {}
+      } else {
+        var lmp = loadFromStorage('kaiwai_member_prefs', null);
+        if (lmp && Object.keys(lmp).length > 0) window._syncSingleToDB('member_prefs', 'prefs', lmp);
       }
+
+      // ── Schedule ──
       if (dbData.schedule) {
         try { localStorage.setItem('seed_schedule', JSON.stringify(dbData.schedule)); } catch(e) {}
+      } else {
+        var lsc = loadFromStorage('seed_schedule', null);
+        if (lsc && Object.keys(lsc).length > 0) window._syncSingleToDB('schedule', 'seed_schedule', lsc);
       }
+
+      // ── Notifications ──
       if (dbData.notifications && dbData.notifications.length > 0) {
         setNotifications(dbData.notifications);
         try { localStorage.setItem('seed_notifications', JSON.stringify(dbData.notifications)); } catch(e) {}
+      } else {
+        var ln = loadFromStorage('seed_notifications', []);
+        if (ln.length > 0) window._syncToDB('notifications', ln, 'replace');
       }
+
     }).catch(function(e) { console.warn('[Supabase] 読み込みエラー:', e); });
   }, []);
 
