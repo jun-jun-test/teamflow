@@ -5,6 +5,75 @@ const BN_PRI_COLOR_GLOBAL = {
 };
 const BN_PRIORITIES_GLOBAL = ["高","中","低"];
 
+// Flow priority colors
+const FLOW_PRI_COLORS = {
+  "高": { bg:"#FEF2F2", border:"#FECACA", activeBorder:"#F87171", text:"#DC2626", dot:"#EF4444", badge:"🔴 高" },
+  "中": { bg:"#FFF7ED", border:"#FED7AA", activeBorder:"#FB923C", text:"#EA580C", dot:"#F97316", badge:"🟡 中" },
+  "低": { bg:"#EFF6FF", border:"#BFDBFE", activeBorder:"#60A5FA", text:"#2563EB", dot:"#3B82F6", badge:"🔵 低" },
+};
+
+// ===== FLOW META EDIT MODAL =====
+function FlowMetaModal({ flow, onSave, onDelete, onClose }) {
+  var [title,    setTitle]    = React.useState(flow.title);
+  var [biz,      setBiz]      = React.useState(flow.business || "");
+  var [priority, setPriority] = React.useState(flow.priority || "中");
+
+  function handleSave() {
+    if (!title.trim()) return;
+    onSave({ title: title.trim(), business: biz, priority: priority });
+    onClose();
+  }
+
+  function handleDelete() {
+    if (!window.confirm("「" + flow.title + "」を削除しますか？\nこの操作は取り消せません。")) return;
+    onDelete();
+    onClose();
+  }
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, padding:16 }} onClick={onClose}>
+      <div style={{ background:"white", borderRadius:20, padding:"28px 28px", maxWidth:440, width:"100%", boxShadow:"0 20px 60px rgba(0,0,0,0.2)" }} onClick={e => e.stopPropagation()}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+          <h3 style={{ fontSize:17, fontWeight:800, color:"#1F2937", margin:0 }}>⚙️ フローを編集</h3>
+          <button onClick={onClose} style={{ background:"#F3F4F6", border:"none", borderRadius:8, padding:"5px 10px", cursor:"pointer", fontSize:14, color:"#6B7280" }}>✕</button>
+        </div>
+
+        <label style={{ fontSize:13, fontWeight:600, color:"#374151", display:"block", marginBottom:5 }}>フロー名 <span style={{ color:"#EF4444" }}>*</span></label>
+        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="フロー名を入力..." style={{ width:"100%", border:"1.5px solid #E5E7EB", borderRadius:10, padding:"10px 12px", fontSize:13, outline:"none", marginBottom:14, boxSizing:"border-box" }} onFocus={e=>e.target.style.borderColor="#4CAF50"} onBlur={e=>e.target.style.borderColor="#E5E7EB"} />
+
+        <label style={{ fontSize:13, fontWeight:600, color:"#374151", display:"block", marginBottom:5 }}>事業名</label>
+        <input value={biz} onChange={e => setBiz(e.target.value)} list="flow-biz-dl-edit" placeholder="事業名を入力または選択" style={{ width:"100%", border:"1.5px solid #E5E7EB", borderRadius:10, padding:"10px 12px", fontSize:13, outline:"none", marginBottom:14, boxSizing:"border-box" }} onFocus={e=>e.target.style.borderColor="#4CAF50"} onBlur={e=>e.target.style.borderColor="#E5E7EB"} />
+        <datalist id="flow-biz-dl-edit">{BUSINESSES.map(b => <option key={b} value={b}/>)}</datalist>
+
+        <label style={{ fontSize:13, fontWeight:600, color:"#374151", display:"block", marginBottom:8 }}>優先度</label>
+        <div style={{ display:"flex", gap:8, marginBottom:24 }}>
+          {["高","中","低"].map(function(p) {
+            var pc = FLOW_PRI_COLORS[p];
+            var active = priority === p;
+            return (
+              <button key={p} onClick={() => setPriority(p)} style={{ flex:1, padding:"9px 6px", borderRadius:10, border:"2px solid " + (active ? pc.activeBorder : "#E5E7EB"), background: active ? pc.bg : "white", color: active ? pc.text : "#6B7280", fontSize:13, fontWeight: active ? 700 : 500, cursor:"pointer", transition:"all 0.15s" }}>
+                {pc.badge}
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ display:"flex", gap:8 }}>
+          <button onClick={handleDelete} style={{ padding:"10px 14px", borderRadius:10, border:"none", background:"#FEE2E2", color:"#DC2626", fontSize:13, fontWeight:600, cursor:"pointer" }}>
+            🗑 削除
+          </button>
+          <button onClick={onClose} style={{ flex:1, padding:"10px", borderRadius:10, border:"1.5px solid #E5E7EB", background:"white", color:"#6B7280", fontSize:13, fontWeight:600, cursor:"pointer" }}>
+            キャンセル
+          </button>
+          <button onClick={handleSave} disabled={!title.trim()} style={{ flex:1, padding:"10px", borderRadius:10, border:"none", background:"#4CAF50", color:"white", fontSize:13, fontWeight:700, cursor:"pointer", opacity: title.trim() ? 1 : 0.5 }}>
+            保存する
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BnFormModal({ bnEdit, bottlenecks, saveBottlenecks, onClose }) {
   const isNew = !bnEdit;
   const [formTitle, setFormTitle] = React.useState(bnEdit?.title || "");
@@ -149,6 +218,8 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks }) {
   const [editingFlow, setEditingFlow] = React.useState(null);
   const [newFlowTitle, setNewFlowTitle] = React.useState("");
   const [newFlowBiz, setNewFlowBiz] = React.useState(BUSINESSES[0]);
+  const [newFlowPri, setNewFlowPri] = React.useState("中");
+  const [editMetaFlow, setEditMetaFlow] = React.useState(null);
   const [showAllRT, setShowAllRT] = React.useState(false);
 
   // ① 関連タスク state
@@ -219,12 +290,25 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks }) {
 
   function addFlow() {
     if (!newFlowTitle.trim()) return;
-    const newFlow = { id: genId(), title: newFlowTitle, business: newFlowBiz, steps: [] };
+    const newFlow = { id: genId(), title: newFlowTitle, business: newFlowBiz, priority: newFlowPri, steps: [] };
     saveFlows([...flows, newFlow]);
     setSelectedFlowId(newFlow.id);
     setNewFlowTitle("");
+    setNewFlowPri("中");
     setShowBuilder(false);
     setEditingFlow(newFlow);
+  }
+
+  function updateFlowMeta(flowId, changes) {
+    const updated = flows.map(f => f.id !== flowId ? f : { ...f, ...changes });
+    saveFlows(updated);
+  }
+
+  function deleteFlow(flowId) {
+    const updated = flows.filter(f => f.id !== flowId);
+    saveFlows(updated);
+    setSelectedFlowId(updated[0]?.id || null);
+    setEditingFlow(null);
   }
 
   function updateStep(flowId, stepId, changes) {
@@ -292,26 +376,63 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks }) {
       </div>
 
       {/* Flow selector + builder toggle */}
-      <div style={{ display:"flex", gap:12, marginBottom:20, flexWrap:"wrap", alignItems:"center" }}>
-        {flows.map(f => (
-          <button key={f.id} onClick={() => { setSelectedFlowId(f.id); setEditingFlow(null); }} style={{ padding:"8px 18px", borderRadius:9999, border:`2px solid ${selectedFlowId === f.id ? "#4CAF50" : "#E5E7EB"}`, background: selectedFlowId === f.id ? "#EAF7EA" : "white", color: selectedFlowId === f.id ? "#4CAF50" : "#6B7280", fontWeight: selectedFlowId === f.id ? 700 : 500, fontSize:13, cursor:"pointer" }}>
-            {f.title}
-          </button>
-        ))}
-        <button onClick={() => setShowBuilder(!showBuilder)} style={{ padding:"8px 18px", borderRadius:9999, border:"2px dashed #D1D5DB", background:"white", color:"#6B7280", fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
+      <div style={{ display:"flex", gap:10, marginBottom:20, flexWrap:"wrap", alignItems:"center" }}>
+        {flows.map(f => {
+          const active = selectedFlowId === f.id;
+          const pc = f.priority ? FLOW_PRI_COLORS[f.priority] : null;
+          return (
+            <button
+              key={f.id}
+              onClick={() => { setSelectedFlowId(f.id); setEditingFlow(null); }}
+              style={{
+                display:"flex", alignItems:"center", gap:7,
+                padding:"8px 16px", borderRadius:9999,
+                border: `2px solid ${active ? (pc ? pc.activeBorder : "#4CAF50") : "#E5E7EB"}`,
+                background: active ? (pc ? pc.bg : "#EAF7EA") : "white",
+                color: active ? (pc ? pc.text : "#4CAF50") : "#6B7280",
+                fontWeight: active ? 700 : 500, fontSize:13, cursor:"pointer",
+                transition:"all 0.15s",
+              }}
+            >
+              <span style={{ width:8, height:8, borderRadius:"50%", background: pc ? pc.dot : "#D1D5DB", flexShrink:0, display:"inline-block" }} />
+              {f.title}
+              {f.priority && (
+                <span style={{ fontSize:10, fontWeight:700, padding:"1px 5px", borderRadius:9999, background: active ? "rgba(255,255,255,0.6)" : (pc ? pc.bg : "#F3F4F6"), color: pc ? pc.text : "#6B7280", border:"1px solid " + (pc ? pc.border : "#E5E7EB") }}>
+                  {f.priority}
+                </span>
+              )}
+            </button>
+          );
+        })}
+        <button onClick={() => setShowBuilder(!showBuilder)} style={{ padding:"8px 16px", borderRadius:9999, border:"2px dashed #D1D5DB", background:"white", color:"#6B7280", fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
           <span style={{ fontSize:16 }}>+</span> 新しいフロー
         </button>
       </div>
 
       {/* New Flow Form */}
       {showBuilder && (
-        <div style={{ background:"white", borderRadius:14, padding:"16px 20px", boxShadow:"0 1px 8px rgba(0,0,0,0.07)", marginBottom:20, display:"flex", gap:12, flexWrap:"wrap", alignItems:"center" }}>
-          <input value={newFlowTitle} onChange={e => setNewFlowTitle(e.target.value)} placeholder="フロー名を入力..." style={{ flex:1, minWidth:200, border:"1.5px solid #E5E7EB", borderRadius:8, padding:"8px 12px", fontSize:13, outline:"none" }} />
-          {/* ⑤ 事業名を自由入力（既存候補も選択可） */}
-          <input value={newFlowBiz} onChange={e => setNewFlowBiz(e.target.value)} list="flow-biz-dl" placeholder="事業名を入力または選択" style={{ minWidth:180, border:"1.5px solid #E5E7EB", borderRadius:8, padding:"8px 12px", fontSize:13, outline:"none" }} />
-          <datalist id="flow-biz-dl">{BUSINESSES.map(b => <option key={b} value={b}/>)}</datalist>
-          <button onClick={addFlow} style={{ padding:"8px 20px", borderRadius:8, background:"#4CAF50", color:"white", border:"none", fontSize:13, fontWeight:700, cursor:"pointer" }}>作成</button>
-          <button onClick={() => setShowBuilder(false)} style={{ padding:"8px 14px", borderRadius:8, background:"#F3F4F6", color:"#6B7280", border:"none", fontSize:13, cursor:"pointer" }}>キャンセル</button>
+        <div style={{ background:"white", borderRadius:14, padding:"18px 20px", boxShadow:"0 1px 8px rgba(0,0,0,0.07)", marginBottom:20 }}>
+          <div style={{ display:"flex", gap:12, flexWrap:"wrap", alignItems:"center", marginBottom:12 }}>
+            <input value={newFlowTitle} onChange={e => setNewFlowTitle(e.target.value)} placeholder="フロー名を入力..." style={{ flex:1, minWidth:180, border:"1.5px solid #E5E7EB", borderRadius:8, padding:"8px 12px", fontSize:13, outline:"none" }} onFocus={e=>e.target.style.borderColor="#4CAF50"} onBlur={e=>e.target.style.borderColor="#E5E7EB"} />
+            <input value={newFlowBiz} onChange={e => setNewFlowBiz(e.target.value)} list="flow-biz-dl" placeholder="事業名を入力または選択" style={{ minWidth:160, border:"1.5px solid #E5E7EB", borderRadius:8, padding:"8px 12px", fontSize:13, outline:"none" }} onFocus={e=>e.target.style.borderColor="#4CAF50"} onBlur={e=>e.target.style.borderColor="#E5E7EB"} />
+            <datalist id="flow-biz-dl">{BUSINESSES.map(b => <option key={b} value={b}/>)}</datalist>
+          </div>
+          <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+            <span style={{ fontSize:12, fontWeight:600, color:"#6B7280", whiteSpace:"nowrap" }}>優先度：</span>
+            {["高","中","低"].map(function(p) {
+              var pc = FLOW_PRI_COLORS[p];
+              var sel = newFlowPri === p;
+              return (
+                <button key={p} onClick={() => setNewFlowPri(p)} style={{ padding:"5px 12px", borderRadius:9999, border:"2px solid " + (sel ? pc.activeBorder : "#E5E7EB"), background: sel ? pc.bg : "white", color: sel ? pc.text : "#6B7280", fontSize:12, fontWeight: sel?700:500, cursor:"pointer", transition:"all 0.12s" }}>
+                  {pc.badge}
+                </button>
+              );
+            })}
+            <div style={{ marginLeft:"auto", display:"flex", gap:8 }}>
+              <button onClick={() => setShowBuilder(false)} style={{ padding:"8px 14px", borderRadius:8, background:"#F3F4F6", color:"#6B7280", border:"none", fontSize:13, cursor:"pointer" }}>キャンセル</button>
+              <button onClick={addFlow} style={{ padding:"8px 20px", borderRadius:8, background:"#4CAF50", color:"white", border:"none", fontSize:13, fontWeight:700, cursor:"pointer" }}>作成</button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -320,11 +441,35 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks }) {
         <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 360px", gap:16 }}>
           {/* Flowchart */}
           <div style={{ background:"white", borderRadius:16, padding:"24px", boxShadow:"0 1px 8px rgba(0,0,0,0.07)" }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-              <h2 style={{ fontSize:17, fontWeight:700, color:"#1F2937" }}>{selectedFlow.title}</h2>
-              <div style={{ display:"flex", gap:8 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20, gap:12 }}>
+              {/* Title + priority badge + business */}
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                  <h2 style={{ fontSize:17, fontWeight:700, color:"#1F2937", margin:0 }}>{selectedFlow.title}</h2>
+                  {selectedFlow.priority && (() => {
+                    const pc = FLOW_PRI_COLORS[selectedFlow.priority];
+                    return (
+                      <span style={{ fontSize:11, fontWeight:700, color:pc.text, background:pc.bg, border:"1px solid " + pc.border, borderRadius:9999, padding:"2px 9px", whiteSpace:"nowrap" }}>
+                        {pc.badge}
+                      </span>
+                    );
+                  })()}
+                </div>
+                {selectedFlow.business && (
+                  <div style={{ fontSize:12, color:"#9CA3AF", marginTop:4 }}>{selectedFlow.business}</div>
+                )}
+              </div>
+              {/* Action buttons */}
+              <div style={{ display:"flex", gap:8, flexShrink:0 }}>
+                <button
+                  onClick={() => setEditMetaFlow(selectedFlow)}
+                  title="フロー名・事業・優先度を編集 / 削除"
+                  style={{ padding:"6px 10px", borderRadius:8, border:"1.5px solid #E5E7EB", background:"white", color:"#6B7280", fontSize:13, cursor:"pointer" }}
+                >
+                  ⚙️
+                </button>
                 <button onClick={() => setEditingFlow(editingFlow ? null : selectedFlow)} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid #4CAF50", background: editingFlow ? "#EAF7EA" : "white", color:"#4CAF50", fontSize:12, fontWeight:600, cursor:"pointer" }}>
-                  {editingFlow ? "編集中" : "✏️ 編集"}
+                  {editingFlow ? "編集中" : "✏️ ステップ編集"}
                 </button>
                 {editingFlow && (
                   <button onClick={() => addStep(selectedFlow.id)} style={{ padding:"6px 14px", borderRadius:8, border:"none", background:"#4CAF50", color:"white", fontSize:12, fontWeight:600, cursor:"pointer" }}>
@@ -533,6 +678,16 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks }) {
           BN_PRI_COLOR={BN_PRI_COLOR}
           BN_PRIORITIES={BN_PRIORITIES}
           onClose={() => { setShowBnForm(false); setBnEdit(null); }}
+        />
+      )}
+
+      {/* ── Flow Meta Edit Modal ── */}
+      {editMetaFlow && (
+        <FlowMetaModal
+          flow={editMetaFlow}
+          onSave={(changes) => updateFlowMeta(editMetaFlow.id, changes)}
+          onDelete={() => deleteFlow(editMetaFlow.id)}
+          onClose={() => setEditMetaFlow(null)}
         />
       )}
 
