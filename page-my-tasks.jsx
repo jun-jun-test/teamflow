@@ -1,3 +1,63 @@
+function SummaryCard({ label, count, icon, color, highlight }) {
+  var G  = "var(--accent,#06C755)";
+  var GL = "var(--accent-light,#E9FBEF)";
+  return (
+    <div style={{ background:highlight?GL:"white",borderRadius:"var(--card-radius,16px)",padding:"18px 20px",boxShadow:"var(--card-shadow,0 2px 12px rgba(0,0,0,0.08))",border:highlight?`2px solid ${G}`:"var(--card-border,none)",flex:1,minWidth:0 }}>
+      <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:8 }}>
+        <div style={{ width:36,height:36,borderRadius:10,background:highlight?G+"25":color+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18 }}>{icon}</div>
+        <span style={{ fontSize:13,color:highlight?"#065F46":"#6B7280",fontWeight:highlight?700:500 }}>{label}</span>
+      </div>
+      <div style={{ fontSize:36,fontWeight:800,color:highlight?G:color,lineHeight:1 }}>{count}<span style={{ fontSize:18,fontWeight:700 }}>件</span></div>
+    </div>
+  );
+}
+
+function TodayTaskRow({ task, onRowClick, onToggleDone, onEdit }) {
+  var G  = "var(--accent,#06C755)";
+  var GL = "var(--accent-light,#E9FBEF)";
+  var done = task.status==="完了";
+  return (
+    <div onClick={() => onRowClick(task)} style={{ display:"flex",alignItems:"center",gap:12,padding:"11px 12px",borderRadius:10,background:done?"#F0FDF4":GL,marginBottom:4,border:`1px solid ${done?"#BBF7D0":"var(--accent,#06C755)"}22`,cursor:"pointer",transition:"background 0.2s" }}>
+      <button onClick={e => { e.stopPropagation(); onToggleDone(task.id); }}
+        style={{ width:24,height:24,borderRadius:7,border:`2px solid ${G}`,background:done?G:"white",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.2s" }}>
+        {done && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>}
+      </button>
+      <div style={{ flex:1,minWidth:0 }}>
+        <div style={{ fontSize:14,fontWeight:done?500:700,color:done?"#6B7280":"#1F2937",textDecoration:done?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{task.title}</div>
+        {done && <div style={{ fontSize:11,color:G,fontWeight:600,marginTop:2 }}>✓ 完了しました！</div>}
+        {!done && <div style={{ fontSize:11,color:"#9CA3AF",marginTop:2 }}>{task.business}</div>}
+      </div>
+      <div style={{ display:"flex",alignItems:"center",gap:8,flexShrink:0 }}>
+        <span style={{ fontSize:11,color:"#9CA3AF" }}>{formatDate(task.dueDate)}</span>
+        <div style={{ width:56 }}>
+          <div style={{ fontSize:11,color:"#6B7280",marginBottom:2,textAlign:"right" }}>{task.progress}%</div>
+          <ProgressBar value={task.progress} height={4} />
+        </div>
+        <button onClick={e => { e.stopPropagation(); onEdit(task); }} style={{ background:"none",border:"none",cursor:"pointer",color:"#9CA3AF",padding:"2px 4px",fontSize:14 }}>✏️</button>
+      </div>
+    </div>
+  );
+}
+
+function WeekTaskRow({ task }) {
+  var GL = "var(--accent-light,#E9FBEF)";
+  return (
+    <div style={{ display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:"#F8FAF8",borderRadius:10,border:"1px solid #F3F4F6" }}>
+      <div style={{ width:32,height:32,borderRadius:8,background:GL,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0 }}>
+        {task.business==="SNSメディア事業"?"🎵":task.business==="診断コンテンツ事業"?"❓":"👥"}
+      </div>
+      <div style={{ flex:1,minWidth:0 }}>
+        <div style={{ fontSize:13,fontWeight:600,color:"#1F2937",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{task.title}</div>
+        <div style={{ fontSize:11,color:"#9CA3AF" }}>{task.business}</div>
+      </div>
+      <div style={{ flexShrink:0,textAlign:"right" }}>
+        <div style={{ fontSize:11,color:"#9CA3AF",marginBottom:3 }}>{formatDate(task.dueDate)}</div>
+        <StatusBadge status={task.status} />
+      </div>
+    </div>
+  );
+}
+
 function MyTasksPage({ currentUser, tasks, setTasks, isMobile }) {
   const myTasks    = tasks.filter(t => t.assignee===currentUser);
   const todayTasks = myTasks.filter(t => isToday(t.dueDate) && t.status!=="完了");
@@ -8,7 +68,7 @@ function MyTasksPage({ currentUser, tasks, setTasks, isMobile }) {
   const [showAllWeek,  setShowAllWeek]  = React.useState(false);
   const [editingId,    setEditingId]    = React.useState(null);
   const [editFields,   setEditFields]   = React.useState({});
-  const [detailTask,   setDetailTask]   = React.useState(null); // ② 詳細表示
+  const [detailTask,   setDetailTask]   = React.useState(null);
 
   const LIMIT = 3;
   const todaySource  = todayTasks.length > 0 ? todayTasks : myTasks.filter(t=>t.status!=="完了").slice(0,6);
@@ -54,61 +114,6 @@ function MyTasksPage({ currentUser, tasks, setTasks, isMobile }) {
     saveToStorage(STORAGE_KEYS.TASKS, updated);
   }
 
-  function SummaryCard({ label, count, icon, color, highlight }) {
-    return (
-      <div style={{ background:highlight?GL:"white",borderRadius:"var(--card-radius,16px)",padding:"18px 20px",boxShadow:"var(--card-shadow,0 2px 12px rgba(0,0,0,0.08))",border:highlight?`2px solid ${G}`:"var(--card-border,none)",flex:1,minWidth:0 }}>
-        <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:8 }}>
-          <div style={{ width:36,height:36,borderRadius:10,background:highlight?G+"25":color+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18 }}>{icon}</div>
-          <span style={{ fontSize:13,color:highlight?"#065F46":"#6B7280",fontWeight:highlight?700:500 }}>{label}</span>
-        </div>
-        <div style={{ fontSize:36,fontWeight:800,color:highlight?G:color,lineHeight:1 }}>{count}<span style={{ fontSize:18,fontWeight:700 }}>件</span></div>
-      </div>
-    );
-  }
-
-  function TodayTaskRow({ task }) {
-    var done = task.status==="完了";
-    return (
-      <div onClick={() => setDetailTask(task)} style={{ display:"flex",alignItems:"center",gap:12,padding:"11px 12px",borderRadius:10,background:done?"#F0FDF4":GL,marginBottom:4,border:`1px solid ${done?"#BBF7D0":"var(--accent,#06C755)"}22`,cursor:"pointer",transition:"background 0.2s" }}>
-        <button onClick={e => { e.stopPropagation(); toggleDone(task.id); }}
-          style={{ width:24,height:24,borderRadius:7,border:`2px solid ${G}`,background:done?G:"white",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.2s" }}>
-          {done && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>}
-        </button>
-        <div style={{ flex:1,minWidth:0 }}>
-          <div style={{ fontSize:14,fontWeight:done?500:700,color:done?"#6B7280":"#1F2937",textDecoration:done?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{task.title}</div>
-          {done && <div style={{ fontSize:11,color:G,fontWeight:600,marginTop:2 }}>✓ 完了しました！</div>}
-          {!done && <div style={{ fontSize:11,color:"#9CA3AF",marginTop:2 }}>{task.business}</div>}
-        </div>
-        <div style={{ display:"flex",alignItems:"center",gap:8,flexShrink:0 }}>
-          <span style={{ fontSize:11,color:"#9CA3AF" }}>{formatDate(task.dueDate)}</span>
-          <div style={{ width:56 }}>
-            <div style={{ fontSize:11,color:"#6B7280",marginBottom:2,textAlign:"right" }}>{task.progress}%</div>
-            <ProgressBar value={task.progress} height={4} />
-          </div>
-          <button onClick={e => { e.stopPropagation(); startEdit(task); }} style={{ background:"none",border:"none",cursor:"pointer",color:"#9CA3AF",padding:"2px 4px",fontSize:14 }}>✏️</button>
-        </div>
-      </div>
-    );
-  }
-
-  function WeekTaskRow({ task }) {
-    return (
-      <div style={{ display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:"#F8FAF8",borderRadius:10,border:"1px solid #F3F4F6" }}>
-        <div style={{ width:32,height:32,borderRadius:8,background:GL,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0 }}>
-          {task.business==="SNSメディア事業"?"🎵":task.business==="診断コンテンツ事業"?"❓":"👥"}
-        </div>
-        <div style={{ flex:1,minWidth:0 }}>
-          <div style={{ fontSize:13,fontWeight:600,color:"#1F2937",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{task.title}</div>
-          <div style={{ fontSize:11,color:"#9CA3AF" }}>{task.business}</div>
-        </div>
-        <div style={{ flexShrink:0,textAlign:"right" }}>
-          <div style={{ fontSize:11,color:"#9CA3AF",marginBottom:3 }}>{formatDate(task.dueDate)}</div>
-          <StatusBadge status={task.status} />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div>
       <div style={{ marginBottom:24 }}>
@@ -135,7 +140,7 @@ function MyTasksPage({ currentUser, tasks, setTasks, isMobile }) {
           </div>
           <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
             {todaySource.length===0 && <div style={{ color:"#065F46",fontSize:13,padding:"8px 0" }}>今日のタスクはありません 🎉</div>}
-            {visibleToday.map(t => <TodayTaskRow key={t.id} task={t} />)}
+            {visibleToday.map(t => <TodayTaskRow key={t.id} task={t} onRowClick={setDetailTask} onToggleDone={toggleDone} onEdit={startEdit} />)}
           </div>
           <p style={{ fontSize:11,color:"#9CA3AF",marginTop:8 }}>タスク行をクリックすると詳細を確認できます</p>
         </div>

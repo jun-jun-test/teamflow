@@ -309,3 +309,111 @@ window.applyAppSettings = function(s) {
 };
 
 applyAppSettings(loadFromStorage('kaiwai_app_settings', null));
+
+// ===== SCHEDULE FEATURE =====
+window.STORAGE_KEYS.SCHEDULE      = 'seed_schedule';
+window.STORAGE_KEYS.NOTIFICATIONS = 'seed_notifications';
+
+// Period: 15th of current month → 15th of next month
+window.getSchedulePeriod = function() {
+  var today = new Date();
+  var y  = today.getFullYear();
+  var m  = today.getMonth();
+  var ny = m === 11 ? y + 1 : y;
+  var nm = (m + 1) % 12;
+  return {
+    start:     new Date(y, m, 15),
+    end:       new Date(ny, nm, 15),
+    periodKey: y + '-' + String(m + 1).padStart(2, '0'),
+  };
+};
+
+window.getScheduleData = function(periodKey) {
+  var store = loadFromStorage('seed_schedule', {});
+  return store[periodKey] || { members: {}, confirmedDates: [] };
+};
+
+window.isScheduleCompleted = function(member, periodKey) {
+  var d = window.getScheduleData(periodKey);
+  return !!(d.members[member] && d.members[member].isCompleted);
+};
+
+// Save member availability, returns new notifications to create
+window.saveMemberAvailability = function(periodKey, member, availableDates) {
+  var store = loadFromStorage('seed_schedule', {});
+  if (!store[periodKey]) store[periodKey] = { members: {}, confirmedDates: [] };
+  store[periodKey].members[member] = {
+    availableDates: availableDates,
+    isCompleted:    true,
+    completedAt:    new Date().toISOString(),
+  };
+  var prev = store[periodKey].confirmedDates || [];
+  var chk  = window._checkMTGStatus(store[periodKey].members, prev);
+  store[periodKey].confirmedDates = chk.confirmed;
+  try { localStorage.setItem('seed_schedule', JSON.stringify(store)); } catch(e) {}
+  return chk.newNotifs;
+};
+
+// Compare previous vs new confirmed dates and generate notifications
+window._checkMTGStatus = function(membersData, prevConfirmed) {
+  var counts = {};
+  Object.values(membersData).forEach(function(md) {
+    (md.availableDates || []).forEach(function(d) {
+      counts[d] = (counts[d] || 0) + 1;
+    });
+  });
+  var confirmed = Object.keys(counts).filter(function(d) { return counts[d] >= 4; }).sort();
+  var notifs = [];
+  confirmed.forEach(function(d) {
+    if (!prevConfirmed.includes(d))
+      notifs.push({ type: 'mtg_confirmed', targetDate: d, count: counts[d] });
+  });
+  prevConfirmed.forEach(function(d) {
+    if (!confirmed.includes(d))
+      notifs.push({ type: 'mtg_cancelled', targetDate: d });
+  });
+  return { confirmed: confirmed, newNotifs: notifs };
+};
+
+window._dateLabel = function(dateStr) {
+  var d    = new Date(dateStr + 'T00:00:00');
+  var days = ['日','月','火','水','木','金','土'];
+  return (d.getMonth() + 1) + '月' + d.getDate() + '日（' + days[d.getDay()] + '）';
+};
+
+window.addNotificationsToStore = function(notifs) {
+  if (!notifs || !notifs.length) return;
+  var store = loadFromStorage('seed_notifications', []);
+  notifs.forEach(function(n) {
+    var label = window._dateLabel(n.targetDate);
+    var msg   = n.type === 'mtg_confirmed'
+      ? '📅 MTG確定：' + label + ' に' + n.count + '名が参加可能です'
+      : '❌ MTGキャンセル：' + label + ' の参加者が3名以下になりました';
+    store.unshift({ id: genId(), type: n.type, targetDate: n.targetDate, message: msg, createdAt: new Date().toISOString(), readBy: [] });
+  });
+  try { localStorage.setItem('seed_notifications', JSON.stringify(store)); } catch(e) {}
+};
+
+window.markAllNotifsRead = function(member) {
+  var store = loadFromStorage('seed_notifications', []);
+  store.forEach(function(n) {
+    if (!n.readBy.includes(member)) n.readBy.push(member);
+  });
+  try { localStorage.setItem('seed_notifications', JSON.stringify(store)); } catch(e) {}
+  return store;
+};
+
+// Send monthly reminder once per period (when today >= 10th)
+window.checkMonthlyReminder = function(periodKey) {
+  var today = new Date();
+  if (today.getDate() < 10) return;
+  var sentKey = 'seed_reminder_' + periodKey;
+  if (localStorage.getItem(sentKey)) return;
+  localStorage.setItem(sentKey, '1');
+  var p  = window.getSchedulePeriod();
+  var s  = window._dateLabel(p.start.toISOString().split('T')[0]);
+  var e  = window._dateLabel(p.end.toISOString().split('T')[0]);
+  var store = loadFromStorage('seed_notifications', []);
+  store.unshift({ id: genId(), type: 'monthly_reminder', message: '📋 MTG日程を入力してください（' + s + ' 〜 ' + e + '）', createdAt: new Date().toISOString(), readBy: [] });
+  try { localStorage.setItem('seed_notifications', JSON.stringify(store)); } catch(e) {}
+};

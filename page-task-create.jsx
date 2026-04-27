@@ -1,3 +1,14 @@
+const Section = ({ label, required, children, hint }) => (
+  <div style={{ marginBottom:20 }}>
+    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+      <label style={{ fontSize:14, fontWeight:700, color:"#374151" }}>{label}</label>
+      {required && <span style={{ fontSize:11, fontWeight:700, color:"white", background:"#4CAF50", borderRadius:4, padding:"1px 7px" }}>必須</span>}
+    </div>
+    {hint && <p style={{ fontSize:12, color:"#9CA3AF", marginBottom:8 }}>{hint}</p>}
+    {children}
+  </div>
+);
+
 const TEMPLATES = [
   { label:"SNS投稿を作成する",       memo:"参考となる事例やトレンドを調査し、投稿の方向性をまとめてください。" },
   { label:"DM送信リストを作成する",   memo:"ターゲットとなるチームをリストアップし、送信優先順位を整理してください。" },
@@ -55,17 +66,6 @@ function TaskCreatePage({ currentUser, tasks, setTasks, isMobile }) {
     setForm(f => ({ ...f, title: t.label, memo: t.memo }));
   }
 
-  const Section = ({ label, required, children, hint }) => (
-    <div style={{ marginBottom:20 }}>
-      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
-        <label style={{ fontSize:14, fontWeight:700, color:"#374151" }}>{label}</label>
-        {required && <span style={{ fontSize:11, fontWeight:700, color:"white", background:"#4CAF50", borderRadius:4, padding:"1px 7px" }}>必須</span>}
-      </div>
-      {hint && <p style={{ fontSize:12, color:"#9CA3AF", marginBottom:8 }}>{hint}</p>}
-      {children}
-    </div>
-  );
-
   return (
     <div>
       <div style={{ marginBottom:24 }}>
@@ -84,16 +84,16 @@ function TaskCreatePage({ currentUser, tasks, setTasks, isMobile }) {
         <div style={{ background:"white", borderRadius:16, padding:"28px 32px", boxShadow:"0 1px 8px rgba(0,0,0,0.07)" }}>
 
           {/* Title */}
-          <Section label="タスク名" required>
+          {Section({ label: "タスク名", required: true, children: (<>
             <div style={{ position:"relative" }}>
               <input value={form.title} onChange={e => set("title", e.target.value)} maxLength={100} placeholder="例：TikTok動画の企画案を提出" style={{ width:"100%", border:`1.5px solid ${errors.title ? "#EF4444" : "#E5E7EB"}`, borderRadius:10, padding:"11px 50px 11px 14px", fontSize:14, color:"#1F2937", outline:"none", boxSizing:"border-box", transition:"border-color 0.15s" }} onFocus={e => e.target.style.borderColor="#4CAF50"} onBlur={e => e.target.style.borderColor= errors.title ? "#EF4444" : "#E5E7EB"} />
               <span style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", fontSize:12, color:"#9CA3AF" }}>{form.title.length} / 100</span>
             </div>
             {errors.title && <p style={{ fontSize:12, color:"#EF4444", marginTop:4 }}>{errors.title}</p>}
-          </Section>
+          </>) })}
 
           {/* Assignee */}
-          <Section label="担当者" required hint={errors.assignee || "担当者を1人選択してください"}>
+          {Section({ label: "担当者", required: true, hint: errors.assignee || "担当者を1人選択してください", children: (
             <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
               {MEMBERS.map(m => {
                 const c = MEMBER_COLORS[m];
@@ -111,22 +111,22 @@ function TaskCreatePage({ currentUser, tasks, setTasks, isMobile }) {
                 );
               })}
             </div>
-          </Section>
+          ) })}
 
           {/* Business + Project */}
           <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap:16 }}>
-            <Section label="所属事業" required>
+            {Section({ label: "所属事業", required: true, children: (<>
               <input value={form.business} onChange={e => set("business", e.target.value)} list="business-dl" placeholder="例：SNSメディア事業" style={{ width:"100%", border:"1.5px solid #E5E7EB", borderRadius:10, padding:"11px 14px", fontSize:14, color:"#1F2937", outline:"none", boxSizing:"border-box" }} onFocus={e=>e.target.style.borderColor="#4CAF50"} onBlur={e=>e.target.style.borderColor="#E5E7EB"} />
               <datalist id="business-dl">{BUSINESSES.map(b=><option key={b} value={b}/>)}</datalist>
-            </Section>
-            <Section label="所属プロジェクト" required>
+            </>) })}
+            {Section({ label: "所属プロジェクト", required: true, children: (<>
               <input value={form.project} onChange={e => set("project", e.target.value)} list="project-dl" placeholder="例：TikTok運用プロジェクト" style={{ width:"100%", border:"1.5px solid #E5E7EB", borderRadius:10, padding:"11px 14px", fontSize:14, color:"#1F2937", outline:"none", boxSizing:"border-box" }} onFocus={e=>e.target.style.borderColor="#4CAF50"} onBlur={e=>e.target.style.borderColor="#E5E7EB"} />
               <datalist id="project-dl">{PROJECTS.map(p=><option key={p} value={p}/>)}</datalist>
-            </Section>
+            </>) })}
           </div>
 
           {/* Workflow Stage */}
-          <Section label="ワークフロー段階" required>
+          {Section({ label: "ワークフロー段階", required: true, children: (
             <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
               {WORKFLOW_STAGES.map(s => (
                 <button key={s} onClick={() => set("workflowStage", s)} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:9999, border:`1.5px solid ${form.workflowStage === s ? "#4CAF50" : "#E5E7EB"}`, background: form.workflowStage === s ? "#EAF7EA" : "white", color: form.workflowStage === s ? "#4CAF50" : "#6B7280", fontWeight: form.workflowStage === s ? 700 : 500, fontSize:13, cursor:"pointer", transition:"all 0.15s" }}>
@@ -134,10 +134,10 @@ function TaskCreatePage({ currentUser, tasks, setTasks, isMobile }) {
                 </button>
               ))}
             </div>
-          </Section>
+          ) })}
 
           {/* Due Date */}
-          <Section label="期限" required>
+          {Section({ label: "期限", required: true, children: (
             <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
               <div style={{ position:"relative" }}>
                 <span style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)", fontSize:14 }}>📅</span>
@@ -147,11 +147,11 @@ function TaskCreatePage({ currentUser, tasks, setTasks, isMobile }) {
                 <button key={label} onClick={() => set("dueDate", val)} style={{ padding:"8px 14px", borderRadius:9999, border:`1.5px solid ${form.dueDate === val ? "#4CAF50" : "#E5E7EB"}`, background: form.dueDate === val ? "#EAF7EA" : "white", color: form.dueDate === val ? "#4CAF50" : "#6B7280", fontSize:12, fontWeight: form.dueDate === val ? 700 : 500, cursor:"pointer", whiteSpace:"nowrap" }}>{label}</button>
               ))}
             </div>
-          </Section>
+          ) })}
 
           {/* Status + Progress */}
           <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap:16 }}>
-            <Section label="ステータス" required>
+            {Section({ label: "ステータス", required: true, children: (
               <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
                 {STATUS_OPTIONS.map(s => (
                   <button key={s} onClick={() => set("status", s)} style={{ padding:"7px 12px", borderRadius:9999, border:`1.5px solid ${form.status === s ? "#4CAF50" : "#E5E7EB"}`, background: form.status === s ? "#EAF7EA" : "white", color: form.status === s ? "#4CAF50" : "#6B7280", fontWeight: form.status === s ? 700 : 500, fontSize:12, cursor:"pointer" }}>
@@ -159,25 +159,25 @@ function TaskCreatePage({ currentUser, tasks, setTasks, isMobile }) {
                   </button>
                 ))}
               </div>
-            </Section>
-            <Section label="進捗率" required>
+            ) })}
+            {Section({ label: "進捗率", required: true, children: (
               <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                 <input type="range" min={0} max={100} value={form.progress} onChange={e => set("progress", Number(e.target.value))} style={{ flex:1, accentColor:"#4CAF50" }} />
                 <span style={{ fontSize:16, fontWeight:800, color:"#1F2937", width:44 }}>{form.progress}%</span>
               </div>
-            </Section>
+            ) })}
           </div>
 
           {/* Memo */}
-          <Section label="メモ">
+          {Section({ label: "メモ", children: (
             <div style={{ position:"relative" }}>
               <textarea value={form.memo} onChange={e => set("memo", e.target.value)} maxLength={500} rows={3} placeholder="例：参考となる事例やトレンドを調査し、企画の方向性をまとめてください。" style={{ width:"100%", border:"1.5px solid #E5E7EB", borderRadius:10, padding:"11px 14px", fontSize:13, color:"#1F2937", resize:"vertical", boxSizing:"border-box", outline:"none", lineHeight:1.6 }} onFocus={e => e.target.style.borderColor="#4CAF50"} onBlur={e => e.target.style.borderColor="#E5E7EB"} />
               <span style={{ position:"absolute", right:10, bottom:8, fontSize:11, color:"#9CA3AF" }}>{form.memo.length} / 500</span>
             </div>
-          </Section>
+          ) })}
 
           {/* Templates */}
-          <Section label="テンプレートから選ぶ">
+          {Section({ label: "テンプレートから選ぶ", children: (
             <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
               {TEMPLATES.map(t => (
                 <button key={t.label} onClick={() => applyTemplate(t)} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:9999, border:"1.5px solid #E5E7EB", background:"white", color:"#6B7280", fontSize:12, cursor:"pointer", transition:"all 0.15s", whiteSpace:"nowrap" }}
@@ -188,7 +188,7 @@ function TaskCreatePage({ currentUser, tasks, setTasks, isMobile }) {
                 </button>
               ))}
             </div>
-          </Section>
+          ) })}
 
           {/* Buttons */}
           <div style={{ display:"flex", gap:12, marginTop:8 }}>
