@@ -209,7 +209,7 @@ function FlowStepCard({ step, idx, editable, onUpdate, onMove, onRemove }) {
   );
 }
 
-function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks }) {
+function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initialRelatedTasks }) {
   const [flows, setFlows] = React.useState(() =>
     (initialFlows && initialFlows.length > 0) ? initialFlows : loadFromStorage(STORAGE_KEYS.FLOWS, SAMPLE_FLOWS)
   );
@@ -224,7 +224,17 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks }) {
 
   // ① 関連タスク state
   const RT_KEY = "kaiwai_related_tasks";
-  const [relatedTasks,  setRelatedTasks]  = React.useState(() => loadFromStorage(RT_KEY, RELATED_TASKS));
+  const [relatedTasks, setRelatedTasks] = React.useState(function() {
+    if (initialRelatedTasks && initialRelatedTasks.length > 0) return initialRelatedTasks;
+    return loadFromStorage(RT_KEY, RELATED_TASKS);
+  });
+
+  // Supabaseからデータが遅れて届いた場合に反映する
+  React.useEffect(function() {
+    if (initialRelatedTasks && initialRelatedTasks.length > 0) {
+      setRelatedTasks(initialRelatedTasks);
+    }
+  }, [initialRelatedTasks]);
   const [rtModalOpen,   setRtModalOpen]   = React.useState(false);
   const [editingRt,     setEditingRt]     = React.useState(null);
   const [rtForm,        setRtForm]        = React.useState({ title:"", assignee:MEMBERS[0], dueDate:"", status:"未着手" });

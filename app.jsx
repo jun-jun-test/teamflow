@@ -6,6 +6,7 @@ function App() {
   const [isMobile,        setIsMobile]        = React.useState(window.innerWidth < 768);
   const [dbFlows,         setDbFlows]         = React.useState(null);
   const [dbBottlenecks,   setDbBottlenecks]   = React.useState(null);
+  const [dbRelatedTasks,  setDbRelatedTasks]  = React.useState(null);
   const [profileOpen,     setProfileOpen]     = React.useState(false);
   const [memberPrefs,     setMemberPrefs]     = React.useState(() => {
     var p = loadFromStorage('kaiwai_member_prefs', {});
@@ -60,6 +61,7 @@ function App() {
     if (!window.db) return;
     loadAllFromDB().then(function(dbData) {
       if (!dbData) return;
+      // ── 既存データ ──
       if (dbData.tasks.length > 0) {
         setTasks(dbData.tasks);
         try { localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(dbData.tasks)); } catch(e) {}
@@ -75,6 +77,23 @@ function App() {
       if (dbData.bottlenecks.length > 0) {
         setDbBottlenecks(dbData.bottlenecks);
         try { localStorage.setItem('kaiwai_bottlenecks', JSON.stringify(dbData.bottlenecks)); } catch(e) {}
+      }
+      // ── 新規同期データ ──
+      if (dbData.relatedTasks && dbData.relatedTasks.length > 0) {
+        setDbRelatedTasks(dbData.relatedTasks);
+        try { localStorage.setItem('kaiwai_related_tasks', JSON.stringify(dbData.relatedTasks)); } catch(e) {}
+      }
+      if (dbData.memberPrefs) {
+        applyMemberPrefs(dbData.memberPrefs);
+        setMemberPrefs(dbData.memberPrefs);
+        try { localStorage.setItem('kaiwai_member_prefs', JSON.stringify(dbData.memberPrefs)); } catch(e) {}
+      }
+      if (dbData.schedule) {
+        try { localStorage.setItem('seed_schedule', JSON.stringify(dbData.schedule)); } catch(e) {}
+      }
+      if (dbData.notifications && dbData.notifications.length > 0) {
+        setNotifications(dbData.notifications);
+        try { localStorage.setItem('seed_notifications', JSON.stringify(dbData.notifications)); } catch(e) {}
       }
     }).catch(function(e) { console.warn('[Supabase] 読み込みエラー:', e); });
   }, []);
@@ -118,7 +137,7 @@ function App() {
     switch (page) {
       case "dashboard": return <DashboardPage currentUser={currentUser} tasks={tasks} setTasks={setTasks} kpis={kpis} setKpis={setKpis} isMobile={isMobile} appSettings={appSettings} />;
       case "mytasks":   return <MyTasksPage   currentUser={currentUser} tasks={tasks} setTasks={setTasks} isMobile={isMobile} />;
-      case "workflow":  return <WorkflowPage  tasks={tasks} isMobile={isMobile} initialFlows={dbFlows} initialBottlenecks={dbBottlenecks} />;
+      case "workflow":  return <WorkflowPage  tasks={tasks} isMobile={isMobile} initialFlows={dbFlows} initialBottlenecks={dbBottlenecks} initialRelatedTasks={dbRelatedTasks} />;
       case "create":    return <TaskCreatePage currentUser={currentUser} tasks={tasks} setTasks={setTasks} isMobile={isMobile} />;
       case "schedule":  return <SchedulePage  currentUser={currentUser} onSaved={handleScheduleSaved} isMobile={isMobile} />;
       case "settings":  return <SettingsPage  appSettings={appSettings} onSaveSettings={handleSaveSettings} isMobile={isMobile} />;

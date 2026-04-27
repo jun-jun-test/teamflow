@@ -213,14 +213,30 @@ window._syncToDB = async function(table, records, mode) {
   }
 };
 
+// 単一オブジェクト（配列でないデータ）を1レコードとして保存
+window._syncSingleToDB = async function(table, id, data) {
+  if (!window.db) return;
+  try {
+    var { error } = await window.db.from(table).upsert({ id: id, data: data });
+    if (error) console.warn('[Supabase] upsert error (' + table + '):', error.message);
+  } catch(e) {
+    console.warn('[Supabase] sync failed (' + table + '):', e);
+  }
+};
+
 // saveToStorage を上書き: localStorage + Supabase の両方に保存する
 window.saveToStorage = function(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch(e) {}
-  if (!window.db || !Array.isArray(value)) return;
-  if      (key === STORAGE_KEYS.TASKS)   window._syncToDB('tasks',       value, 'upsert');
-  else if (key === STORAGE_KEYS.KPIS)    window._syncToDB('kpis',        value, 'upsert');
-  else if (key === STORAGE_KEYS.FLOWS)   window._syncToDB('flows',       value, 'replace');
-  else if (key === 'kaiwai_bottlenecks') window._syncToDB('bottlenecks', value, 'replace');
+  if (!window.db) return;
+  if (Array.isArray(value)) {
+    if      (key === STORAGE_KEYS.TASKS)       window._syncToDB('tasks',         value, 'upsert');
+    else if (key === STORAGE_KEYS.KPIS)        window._syncToDB('kpis',          value, 'upsert');
+    else if (key === STORAGE_KEYS.FLOWS)       window._syncToDB('flows',         value, 'replace');
+    else if (key === 'kaiwai_bottlenecks')     window._syncToDB('bottlenecks',   value, 'replace');
+    else if (key === 'kaiwai_related_tasks')   window._syncToDB('related_tasks', value, 'replace');
+  } else if (value && typeof value === 'object') {
+    if      (key === 'kaiwai_member_prefs')    window._syncSingleToDB('member_prefs', 'prefs', value);
+  }
 };
 
 // initStorage を上書き: localStorage のみ書き込む（サンプルデータをDBに入れないため）
@@ -234,17 +250,25 @@ window.initStorage = function() {
 window.loadAllFromDB = async function() {
   if (!window.db) return null;
   try {
-    const [t, k, f, b] = await Promise.all([
+    var [t, k, f, b, rt, mp, sc, no] = await Promise.all([
       window.db.from('tasks').select('data'),
       window.db.from('kpis').select('data'),
       window.db.from('flows').select('data'),
       window.db.from('bottlenecks').select('data'),
+      window.db.from('related_tasks').select('data'),
+      window.db.from('member_prefs').select('data').eq('id', 'prefs'),
+      window.db.from('schedule').select('data').eq('id', 'seed_schedule'),
+      window.db.from('notifications').select('data'),
     ]);
     return {
-      tasks:       (t.data || []).map(r => r.data),
-      kpis:        (k.data || []).map(r => r.data),
-      flows:       (f.data || []).map(r => r.data),
-      bottlenecks: (b.data || []).map(r => r.data),
+      tasks:         (t.data  || []).map(function(r) { return r.data; }),
+      kpis:          (k.data  || []).map(function(r) { return r.data; }),
+      flows:         (f.data  || []).map(function(r) { return r.data; }),
+      bottlenecks:   (b.data  || []).map(function(r) { return r.data; }),
+      relatedTasks:  (rt.data || []).map(function(r) { return r.data; }),
+      memberPrefs:   (mp.data && mp.data.length > 0) ? mp.data[0].data : null,
+      schedule:      (sc.data && sc.data.length > 0) ? sc.data[0].data : null,
+      notifications: (no.data || []).map(function(r) { return r.data; }),
     };
   } catch(e) {
     console.warn('[Supabase] データ読み込み失敗:', e);
@@ -351,6 +375,7 @@ window.saveMemberAvailability = function(periodKey, member, availableDates) {
   var chk  = window._checkMTGStatus(store[periodKey].members, prev);
   store[periodKey].confirmedDates = chk.confirmed;
   try { localStorage.setItem('seed_schedule', JSON.stringify(store)); } catch(e) {}
+  if (window.db) window._syncSingleToDB('schedule', 'seed_schedule', store);
   return chk.newNotifs;
 };
 
@@ -392,6 +417,7 @@ window.addNotificationsToStore = function(notifs) {
     store.unshift({ id: genId(), type: n.type, targetDate: n.targetDate, message: msg, createdAt: new Date().toISOString(), readBy: [] });
   });
   try { localStorage.setItem('seed_notifications', JSON.stringify(store)); } catch(e) {}
+  if (window.db) window._syncToDB('notifications', store, 'replace');
 };
 
 window.markAllNotifsRead = function(member) {
@@ -400,6 +426,7 @@ window.markAllNotifsRead = function(member) {
     if (!n.readBy.includes(member)) n.readBy.push(member);
   });
   try { localStorage.setItem('seed_notifications', JSON.stringify(store)); } catch(e) {}
+  if (window.db) window._syncToDB('notifications', store, 'replace');
   return store;
 };
 
@@ -416,4 +443,5 @@ window.checkMonthlyReminder = function(periodKey) {
   var store = loadFromStorage('seed_notifications', []);
   store.unshift({ id: genId(), type: 'monthly_reminder', message: '📋 MTG日程を入力してください（' + s + ' 〜 ' + e + '）', createdAt: new Date().toISOString(), readBy: [] });
   try { localStorage.setItem('seed_notifications', JSON.stringify(store)); } catch(e) {}
+  if (window.db) window._syncToDB('notifications', store, 'replace');
 };
