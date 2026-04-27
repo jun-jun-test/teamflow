@@ -112,15 +112,29 @@ function App() {
     }).catch(function(e) { console.warn('[Supabase] 読み込みエラー:', e); });
   }, []);
 
-  // ── 定期ポーリング（30秒）＋ タブに戻ったとき即時同期 ──
+  // ── Supabase Realtime：DBが変わった瞬間に全端末へ即時配信 ──
+  React.useEffect(() => {
+    if (!window.db) return;
+    var WATCH_TABLES = ['tasks','kpis','flows','bottlenecks','related_tasks','member_prefs','schedule','notifications'];
+    var ch = window.db.channel('seed-realtime-all');
+    WATCH_TABLES.forEach(function(table) {
+      ch.on('postgres_changes', { event: '*', schema: 'public', table: table }, function() {
+        loadAllFromDB().then(function(d) { if (d) applyDBData(d); });
+      });
+    });
+    ch.subscribe(function(status) {
+      console.info('[Realtime]', status);
+    });
+    return function() { try { window.db.removeChannel(ch); } catch(e) {} };
+  }, []);
+
+  // ── 定期ポーリング（15秒）＋ タブに戻ったとき即時同期（Realtimeのフォールバック） ──
   React.useEffect(() => {
     if (!window.db) return;
     function refresh() {
-      loadAllFromDB().then(applyDBData).catch(function(e) {
-        console.warn('[Supabase] 同期エラー:', e);
-      });
+      loadAllFromDB().then(function(d) { if (d) applyDBData(d); });
     }
-    var timer = setInterval(refresh, 30000);
+    var timer = setInterval(refresh, 15000);
     window.addEventListener('focus', refresh);
     return function() {
       clearInterval(timer);

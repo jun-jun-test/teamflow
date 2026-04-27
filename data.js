@@ -246,29 +246,45 @@ window.initStorage = function() {
   if (!localStorage.getItem(STORAGE_KEYS.FLOWS)) localStorage.setItem(STORAGE_KEYS.FLOWS, JSON.stringify(SAMPLE_FLOWS));
 };
 
-// Supabase から全データを一括取得する
+// テーブル1つを安全にクエリ（エラーでも空配列を返す）
+window._safeQuery = async function(tableName, queryPromise) {
+  try {
+    var res = await queryPromise;
+    if (res.error) {
+      console.warn('[Supabase] read error (' + tableName + '):', res.error.message);
+      return [];
+    }
+    return res.data || [];
+  } catch(e) {
+    console.warn('[Supabase] read failed (' + tableName + '):', e);
+    return [];
+  }
+};
+
+// Supabase から全データを一括取得する（テーブルごと独立してエラー処理）
 window.loadAllFromDB = async function() {
   if (!window.db) return null;
   try {
+    var q = window._safeQuery;
     var [t, k, f, b, rt, mp, sc, no] = await Promise.all([
-      window.db.from('tasks').select('data'),
-      window.db.from('kpis').select('data'),
-      window.db.from('flows').select('data'),
-      window.db.from('bottlenecks').select('data'),
-      window.db.from('related_tasks').select('data'),
-      window.db.from('member_prefs').select('data').eq('id', 'prefs'),
-      window.db.from('schedule').select('data').eq('id', 'seed_schedule'),
-      window.db.from('notifications').select('data'),
+      q('tasks',         window.db.from('tasks').select('data')),
+      q('kpis',          window.db.from('kpis').select('data')),
+      q('flows',         window.db.from('flows').select('data')),
+      q('bottlenecks',   window.db.from('bottlenecks').select('data')),
+      q('related_tasks', window.db.from('related_tasks').select('data')),
+      q('member_prefs',  window.db.from('member_prefs').select('data').eq('id','prefs')),
+      q('schedule',      window.db.from('schedule').select('data').eq('id','seed_schedule')),
+      q('notifications', window.db.from('notifications').select('data')),
     ]);
     return {
-      tasks:         (t.data  || []).map(function(r) { return r.data; }),
-      kpis:          (k.data  || []).map(function(r) { return r.data; }),
-      flows:         (f.data  || []).map(function(r) { return r.data; }),
-      bottlenecks:   (b.data  || []).map(function(r) { return r.data; }),
-      relatedTasks:  (rt.data || []).map(function(r) { return r.data; }),
-      memberPrefs:   (mp.data && mp.data.length > 0) ? mp.data[0].data : null,
-      schedule:      (sc.data && sc.data.length > 0) ? sc.data[0].data : null,
-      notifications: (no.data || []).map(function(r) { return r.data; }),
+      tasks:         t.map(function(r) { return r.data; }),
+      kpis:          k.map(function(r) { return r.data; }),
+      flows:         f.map(function(r) { return r.data; }),
+      bottlenecks:   b.map(function(r) { return r.data; }),
+      relatedTasks:  rt.map(function(r) { return r.data; }),
+      memberPrefs:   mp.length > 0 ? mp[0].data : null,
+      schedule:      sc.length > 0 ? sc[0].data : null,
+      notifications: no.map(function(r) { return r.data; }),
     };
   } catch(e) {
     console.warn('[Supabase] データ読み込み失敗:', e);
