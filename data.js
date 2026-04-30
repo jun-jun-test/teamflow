@@ -246,22 +246,25 @@ window.initStorage = function() {
   if (!localStorage.getItem(STORAGE_KEYS.FLOWS)) localStorage.setItem(STORAGE_KEYS.FLOWS, JSON.stringify(SAMPLE_FLOWS));
 };
 
-// テーブル1つを安全にクエリ（エラーでも空配列を返す）
+// テーブル1つを安全にクエリ
+// 成功時: 行の配列（空テーブルなら []）
+// エラー時: null（空と区別するため）
 window._safeQuery = async function(tableName, queryPromise) {
   try {
     var res = await queryPromise;
     if (res.error) {
       console.warn('[Supabase] read error (' + tableName + '):', res.error.message);
-      return [];
+      return null;
     }
     return res.data || [];
   } catch(e) {
     console.warn('[Supabase] read failed (' + tableName + '):', e);
-    return [];
+    return null;
   }
 };
 
 // Supabase から全データを一括取得する（テーブルごと独立してエラー処理）
+// 各フィールド: null=読み込みエラー、[]=DBが空、[...]=データあり
 window.loadAllFromDB = async function() {
   if (!window.db) return null;
   try {
@@ -277,14 +280,14 @@ window.loadAllFromDB = async function() {
       q('notifications', window.db.from('notifications').select('data')),
     ]);
     return {
-      tasks:         t.map(function(r) { return r.data; }),
-      kpis:          k.map(function(r) { return r.data; }),
-      flows:         f.map(function(r) { return r.data; }),
-      bottlenecks:   b.map(function(r) { return r.data; }),
-      relatedTasks:  rt.map(function(r) { return r.data; }),
-      memberPrefs:   mp.length > 0 ? mp[0].data : null,
-      schedule:      sc.length > 0 ? sc[0].data : null,
-      notifications: no.map(function(r) { return r.data; }),
+      tasks:         t  !== null ? t.map(function(r) { return r.data; })  : null,
+      kpis:          k  !== null ? k.map(function(r) { return r.data; })  : null,
+      flows:         f  !== null ? f.map(function(r) { return r.data; })  : null,
+      bottlenecks:   b  !== null ? b.map(function(r) { return r.data; })  : null,
+      relatedTasks:  rt !== null ? rt.map(function(r) { return r.data; }) : null,
+      memberPrefs:   mp !== null ? (mp.length > 0 ? mp[0].data : {})      : null,
+      schedule:      sc !== null ? (sc.length > 0 ? sc[0].data : null)    : null,
+      notifications: no !== null ? no.map(function(r) { return r.data; }) : null,
     };
   } catch(e) {
     console.warn('[Supabase] データ読み込み失敗:', e);
