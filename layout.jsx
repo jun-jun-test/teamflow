@@ -220,13 +220,13 @@ function Sidebar({ page, setPage }) {
 
 // ===== BOTTOM NAV (mobile) =====
 function BottomNav({ page, setPage }) {
-  const navItems = getNavItems().slice(0, 5);
+  const navItems = getNavItems();
   return (
     <nav style={{ position:"fixed", bottom:0, left:0, right:0, height:60, background:"white", borderTop:"1px solid #E5E7EB", display:"flex", zIndex:100 }}>
       {navItems.map(item => {
         const active = page === item.key;
         return (
-          <button key={item.key} onClick={() => setPage(item.key)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2, border:"none", background:"transparent", cursor:"pointer", color:active?"var(--accent,#06C755)":"#9CA3AF", fontSize:10, fontWeight:active?700:500 }}>
+          <button key={item.key} onClick={() => setPage(item.key)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2, border:"none", background:"transparent", cursor:"pointer", color:active?"var(--accent,#06C755)":"#9CA3AF", fontSize:9, fontWeight:active?700:500 }}>
             <span style={{ color:active?"var(--accent,#06C755)":"#9CA3AF" }}>{item.icon}</span>
             {item.label}
           </button>
