@@ -12,12 +12,7 @@ function NameSelectPage({ onSelect, isMobile }) {
       {/* Header */}
       <header style={{ height:64, background:"white", borderBottom:"1px solid #E5E7EB", display:"flex", alignItems:"center", padding:"0 24px", boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <svg width="36" height="36" viewBox="0 0 36 36">
-            <circle cx="18" cy="18" r="18" fill="#4CAF50" />
-            <circle cx="13" cy="16" r="2.5" fill="white" />
-            <circle cx="23" cy="16" r="2.5" fill="white" />
-            <path d="M12 22 Q18 27 24 22" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round" />
-          </svg>
+          <img src="logo.png" alt="SEED" style={{ height:36, width:36, objectFit:"contain", borderRadius:8 }} />
           <span style={{ fontWeight:700, fontSize:16, color:"#1F2937" }}>チーム進捗ツール</span>
         </div>
       </header>

@@ -1,3 +1,32 @@
+// ===== OPENING VIDEO =====
+function OpeningVideo({ onEnd }) {
+  var [fading, setFading] = React.useState(false);
+
+  function finish() {
+    if (fading) return;
+    setFading(true);
+    setTimeout(onEnd, 800);
+  }
+
+  return (
+    <div style={{
+      position:"fixed", inset:0, zIndex:9999,
+      background:"#000",
+      opacity: fading ? 0 : 1,
+      transition:"opacity 0.8s ease",
+      pointerEvents: fading ? "none" : "auto",
+    }}>
+      <video
+        autoPlay muted playsInline
+        onEnded={finish}
+        onError={finish}
+        style={{ width:"100%", height:"100%", objectFit:"cover" }}
+        src="Use_the_attached_logo_image_as.mp4"
+      />
+    </div>
+  );
+}
+
 function App() {
   const [currentUser,     setCurrentUser]     = React.useState(() => loadFromStorage(STORAGE_KEYS.USER, null));
   const [page,            setPage]            = React.useState("dashboard");
@@ -18,6 +47,9 @@ function App() {
     if (s) applyAppSettings(s);
     return window.APP_SETTINGS;
   });
+
+  // ===== OPENING VIDEO STATE =====
+  const [opDone, setOpDone] = React.useState(() => !!sessionStorage.getItem('seed_op_done'));
 
   // ===== SCHEDULE STATE =====
   const [notifications,     setNotifications]     = React.useState(() => loadFromStorage('seed_notifications', []));
@@ -174,7 +206,17 @@ function App() {
   }
 
   if (!currentUser) {
-    return <NameSelectPage onSelect={handleSelectUser} isMobile={isMobile} />;
+    return (
+      <>
+        <NameSelectPage onSelect={handleSelectUser} isMobile={isMobile} />
+        {!opDone && (
+          <OpeningVideo onEnd={function() {
+            sessionStorage.setItem('seed_op_done', '1');
+            setOpDone(true);
+          }} />
+        )}
+      </>
+    );
   }
 
   const sidebarW = isMobile ? 0 : 200;

@@ -130,16 +130,7 @@ function Header({ currentUser, onChangeUser, onOpenProfile, notifications, onMar
   return (
     <header style={{ position:"fixed", top:0, left:0, right:0, height:64, background:"white", borderBottom:"1px solid #E5E7EB", display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 24px", zIndex:100, boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
       <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-        {/* SEED ロゴ（芽・種子モチーフ） */}
-        <svg width="36" height="36" viewBox="0 0 36 36">
-          <circle cx="18" cy="18" r="18" fill="var(--logo-fill,#22C55E)" />
-          <line x1="18" y1="28" x2="18" y2="16" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-          <path d="M18 22 Q11 17 8 20 Q13 26 18 22Z" fill="white" opacity="0.92"/>
-          <path d="M18 19 Q25 14 28 17 Q23 23 18 19Z" fill="white" opacity="0.82"/>
-          <circle cx="13" cy="29" r="1.4" fill="white" opacity="0.55"/>
-          <circle cx="18" cy="30" r="1.4" fill="white" opacity="0.55"/>
-          <circle cx="23" cy="29" r="1.4" fill="white" opacity="0.55"/>
-        </svg>
+        <img src="logo.png" alt="SEED" style={{ height:40, width:40, objectFit:"contain", borderRadius:10 }} />
         <div style={{ display:"flex", flexDirection:"column", lineHeight:1.1 }}>
           <span style={{ fontWeight:800, fontSize:18, color:"#15803D", letterSpacing:"0.05em" }}>{appTitle}</span>
           <span style={{ fontSize:9, color:"#86EFAC", fontWeight:600, letterSpacing:"0.15em" }}>TEAM PROGRESS</span>
