@@ -199,7 +199,7 @@ function App() {
       case "dashboard": return <DashboardPage currentUser={currentUser} tasks={tasks} setTasks={setTasks} kpis={kpis} setKpis={setKpis} isMobile={isMobile} appSettings={appSettings} />;
       case "mytasks":   return <MyTasksPage   currentUser={currentUser} tasks={tasks} setTasks={setTasks} isMobile={isMobile} />;
       case "calendar":  return <CalendarPage  currentUser={currentUser} tasks={tasks} setTasks={setTasks} isMobile={isMobile} />;
-      case "create":    return <TaskCreatePage currentUser={currentUser} tasks={tasks} setTasks={setTasks} isMobile={isMobile} />;
+      case "create":    return <TaskCreatePage currentUser={currentUser} tasks={tasks} setTasks={setTasks} isMobile={isMobile} onTaskCreated={() => setNotifications(loadFromStorage('seed_notifications', []))} />;
       case "workflow":  return <WorkflowPage  tasks={tasks} isMobile={isMobile} />;
       case "schedule":  return <SchedulePage  currentUser={currentUser} onSaved={handleScheduleSaved} isMobile={isMobile} />;
       case "settings":  return <SettingsPage  appSettings={appSettings} onSaveSettings={handleSaveSettings} isMobile={isMobile} />;
