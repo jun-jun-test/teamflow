@@ -33,7 +33,7 @@ function SettingsPage({ appSettings, onSaveSettings, isMobile }) {
   var s = appSettings || window.APP_SETTINGS || {};
 
   const [title,      setTitle]      = React.useState(s.appTitle || "SEED");
-  const [navLabels,  setNavLabels]  = React.useState(Object.assign({ dashboard:"ダッシュボード", mytasks:"自分のタスク", workflow:"ワークフロー", create:"タスク作成", settings:"設定" }, s.navLabels || {}));
+  const [navLabels,  setNavLabels]  = React.useState(Object.assign({ dashboard:"ダッシュボード", mytasks:"自分のタスク", calendar:"カレンダー", create:"タスク作成", settings:"設定" }, s.navLabels || {}));
   const [sections,   setSections]   = React.useState(Object.assign({ kpi:"今週のKPI", nextTasks:"次にやるべきタスク", memberProgress:"メンバー別進捗", projectProgress:"プロジェクト別進捗" }, s.dashboardSections || {}));
   const [businesses, setBusinesses] = React.useState((s.businesses || window.BUSINESSES || ["サークル間マッチング事業","診断コンテンツ事業","SNSメディア事業"]).join("\n"));
   const [projects,   setProjects]   = React.useState((s.projects   || window.PROJECTS   || ["TikTok運用プロジェクト","DM送信プロジェクト","診断設計プロジェクト","サークルマッチング検証プロジェクト"]).join("\n"));
@@ -58,7 +58,7 @@ function SettingsPage({ appSettings, onSaveSettings, isMobile }) {
   function resetAll() {
     if (!window.confirm("すべての設定をデフォルトに戻しますか？")) return;
     setTitle("SEED");
-    setNavLabels({ dashboard:"ダッシュボード", mytasks:"自分のタスク", workflow:"ワークフロー", create:"タスク作成", settings:"設定" });
+    setNavLabels({ dashboard:"ダッシュボード", mytasks:"自分のタスク", calendar:"カレンダー", create:"タスク作成", settings:"設定" });
     setSections({ kpi:"今週のKPI", nextTasks:"次にやるべきタスク", memberProgress:"メンバー別進捗", projectProgress:"プロジェクト別進捗" });
     setBusinesses(["サークル間マッチング事業","診断コンテンツ事業","SNSメディア事業"].join("\n"));
     setProjects(["TikTok運用プロジェクト","DM送信プロジェクト","診断設計プロジェクト","サークルマッチング検証プロジェクト"].join("\n"));
@@ -88,7 +88,7 @@ function SettingsPage({ appSettings, onSaveSettings, isMobile }) {
           </SettingsSection>
 
           <SettingsSection title="🗂️ ナビゲーションのラベル">
-            {[["ダッシュボード","dashboard"],["自分のタスク","mytasks"],["ワークフロー","workflow"],["タスク作成","create"],["設定","settings"]].map(function(pair) {
+            {[["ダッシュボード","dashboard"],["自分のタスク","mytasks"],["カレンダー","calendar"],["タスク作成","create"],["設定","settings"]].map(function(pair) {
               return (
                 <SettingsField key={pair[1]} label={pair[0]}
                   value={navLabels[pair[1]] || ""}

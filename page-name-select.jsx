@@ -3,7 +3,6 @@ function NameSelectPage({ onSelect, isMobile }) {
 
   function handleGo() {
     if (!selected) return;
-    saveToStorage(STORAGE_KEYS.USER, selected);
     onSelect(selected);
   }
 

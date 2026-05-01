@@ -154,9 +154,46 @@ function ProfileModal({ member, currentPrefs, onSave, onClose }) {
           </div>
         </div>
 
+        {/* PIN設定 */}
+        <div style={{ borderTop:"1px solid #F3F4F6",paddingTop:16,marginBottom:20 }}>
+          <label style={{ fontSize:13,fontWeight:700,color:"#374151",display:"block",marginBottom:10 }}>🔐 PINコード（任意・4桁）</label>
+          <div style={{ display:"flex",gap:8,alignItems:"center" }}>
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              placeholder={window.hasPIN && hasPIN(member) ? "変更する場合は入力" : "設定なし"}
+              id={"pin-input-" + member}
+              style={{ flex:1,border:"1.5px solid #E5E7EB",borderRadius:9,padding:"8px 12px",fontSize:14,outline:"none",letterSpacing:"0.3em",boxSizing:"border-box" }}
+              onFocus={function(e){ e.target.style.borderColor="var(--accent,#06C755)"; }}
+              onBlur={function(e){ e.target.style.borderColor="#E5E7EB"; }}
+            />
+            {window.hasPIN && hasPIN(member) && (
+              <button onClick={function(){
+                if (!window.confirm("PINを削除しますか？")) return;
+                savePIN(member, null);
+                var el = document.getElementById("pin-input-" + member);
+                if (el) el.value = "";
+              }} style={{ padding:"8px 12px",borderRadius:9,border:"1.5px solid #FCA5A5",background:"#FEF2F2",color:"#DC2626",fontSize:12,cursor:"pointer",fontWeight:600,flexShrink:0 }}>
+                削除
+              </button>
+            )}
+          </div>
+          <p style={{ fontSize:11,color:"#9CA3AF",marginTop:5 }}>設定すると次回ログイン時にPINが求められます。空白のままにすると変更なし。</p>
+        </div>
+
         <div style={{ display:"flex",gap:10 }}>
           <button onClick={onClose} style={{ flex:1,padding:12,borderRadius:10,border:"1.5px solid #E5E7EB",background:"white",color:"#6B7280",fontSize:14,fontWeight:600,cursor:"pointer" }}>キャンセル</button>
-          <button onClick={() => { onSave(member, { color:selColor, face:selFace }); onClose(); }} style={{ flex:2,padding:12,borderRadius:10,border:"none",background:"var(--accent,#06C755)",color:"white",fontSize:14,fontWeight:700,cursor:"pointer" }}>保存する</button>
+          <button onClick={function() {
+            var el = document.getElementById("pin-input-" + member);
+            var pinVal = el ? el.value.trim() : "";
+            if (pinVal && pinVal.length > 0) {
+              if (!/^\d{4}$/.test(pinVal)) { alert("PINは4桁の数字で入力してください"); return; }
+              savePIN(member, pinVal);
+            }
+            onSave(member, { color:selColor, face:selFace });
+            onClose();
+          }} style={{ flex:2,padding:12,borderRadius:10,border:"none",background:"var(--accent,#06C755)",color:"white",fontSize:14,fontWeight:700,cursor:"pointer" }}>保存する</button>
         </div>
       </div>
     </div>
@@ -272,7 +309,152 @@ function MetricCard({ title, value, unit, sub, subIcon, subColor, icon, iconColo
   );
 }
 
+// ===== TASK COMMENTS =====
+function TaskComments({ taskId, currentUser }) {
+  var G  = "var(--accent,#06C755)";
+  var GL = "var(--accent-light,#E9FBEF)";
+
+  var [comments, setComments] = React.useState(function() { return window.getTaskComments ? getTaskComments(taskId) : []; });
+  var [newText,  setNewText]  = React.useState('');
+
+  function reload() {
+    setComments(window.getTaskComments ? getTaskComments(taskId) : []);
+  }
+
+  function handleAdd() {
+    if (!newText.trim()) return;
+    addTaskComment(taskId, currentUser, newText);
+    setNewText('');
+    reload();
+  }
+
+  function handleDelete(id) {
+    deleteTaskComment(id);
+    reload();
+  }
+
+  function fmtTime(iso) {
+    var d = new Date(iso);
+    var diffMin = Math.floor((new Date() - d) / 60000);
+    if (diffMin < 1)  return 'たった今';
+    if (diffMin < 60) return diffMin + '分前';
+    var diffH = Math.floor(diffMin / 60);
+    if (diffH < 24)   return diffH + '時間前';
+    return Math.floor(diffH / 24) + '日前';
+  }
+
+  return (
+    <div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 10 }}>
+        💬 コメント（{comments.length}件）
+      </div>
+
+      {comments.length === 0 && (
+        <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 10, padding: "8px 0" }}>コメントはまだありません</div>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+        {comments.map(function(c) {
+          return (
+            <div key={c.id} style={{ display: "flex", gap: 8 }}>
+              <MemberAvatar name={c.author} size={26} />
+              <div style={{ flex: 1, background: "#F8FAF8", borderRadius: 10, padding: "8px 12px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#1F2937" }}>{c.author}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 11, color: "#9CA3AF" }}>{fmtTime(c.createdAt)}</span>
+                    {c.author === currentUser && (
+                      <button onClick={function(){ handleDelete(c.id); }}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "#D1D5DB", fontSize: 13, padding: 0, lineHeight: 1 }}
+                        title="削除">✕</button>
+                    )}
+                  </div>
+                </div>
+                <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.55, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{c.text}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ display: "flex", gap: 8 }}>
+        <input
+          value={newText}
+          onChange={function(e){ setNewText(e.target.value); }}
+          onKeyDown={function(e){ if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAdd(); } }}
+          placeholder="コメントを入力…（Enterで送信）"
+          style={{ flex: 1, border: "1.5px solid #E5E7EB", borderRadius: 10, padding: "8px 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+          onFocus={function(e){ e.target.style.borderColor = G; }}
+          onBlur={function(e){ e.target.style.borderColor = "#E5E7EB"; }}
+        />
+        <button onClick={handleAdd} disabled={!newText.trim()}
+          style={{ padding: "8px 16px", borderRadius: 10, border: "none", background: newText.trim() ? G : "#E5E7EB", color: "white", fontSize: 13, fontWeight: 700, cursor: newText.trim() ? "pointer" : "not-allowed", flexShrink: 0 }}>
+          送信
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ===== PIN ENTRY MODAL =====
+function PINEntryModal({ name, error, onSubmit, onCancel }) {
+  var G = "var(--accent,#06C755)";
+  var [pin, setPin] = React.useState('');
+
+  function handleChange(val) {
+    if (!/^\d*$/.test(val) || val.length > 4) return;
+    setPin(val);
+    if (val.length === 4) {
+      setTimeout(function(){ onSubmit(val); }, 80);
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, padding: 16 }}>
+      <div style={{ background: "white", borderRadius: 24, padding: "36px 40px", maxWidth: 360, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.25)", textAlign: "center" }}>
+        <div style={{ marginBottom: 14 }}>
+          <MemberAvatar name={name} size={52} />
+        </div>
+        <h3 style={{ fontSize: 18, fontWeight: 800, color: "#1F2937", marginBottom: 6 }}>PINを入力</h3>
+        <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 22 }}>{name} のPINコード（4桁）</p>
+
+        <input
+          type="password"
+          inputMode="numeric"
+          maxLength={4}
+          value={pin}
+          onChange={function(e){ handleChange(e.target.value); }}
+          autoFocus
+          placeholder="・ ・ ・ ・"
+          style={{
+            width: "100%", border: "2px solid " + (error ? "#EF4444" : "#E5E7EB"),
+            borderRadius: 12, padding: "14px", fontSize: 28, textAlign: "center",
+            outline: "none", letterSpacing: "0.6em", boxSizing: "border-box", marginBottom: 8,
+            color: "#1F2937",
+          }}
+          onFocus={function(e){ e.target.style.borderColor = error ? "#EF4444" : G; }}
+          onBlur={function(e){ e.target.style.borderColor = error ? "#EF4444" : "#E5E7EB"; }}
+        />
+
+        {error
+          ? <div style={{ color: "#EF4444", fontSize: 13, marginBottom: 16, fontWeight: 600 }}>PINが正しくありません</div>
+          : <div style={{ height: 28 }} />
+        }
+
+        <button onClick={onCancel}
+          style={{ width: "100%", padding: "12px", borderRadius: 10, border: "1.5px solid #E5E7EB", background: "white", color: "#6B7280", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+          戻る
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ===== PROFILE MODAL with PIN =====
+// (ProfileModal already defined above — replace the existing one to add PIN section)
+
 Object.assign(window, {
   StatusBadge, PriorityBadge, ProgressBar, MemberAvatar, ProfileModal,
-  Sparkline, SidebarDeco, MetricCard, EmojiPicker, FACE_LIST, EMOJI_SET
+  Sparkline, SidebarDeco, MetricCard, EmojiPicker, FACE_LIST, EMOJI_SET,
+  TaskComments, PINEntryModal,
 });

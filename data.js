@@ -298,6 +298,78 @@ window.loadAllFromDB = async function() {
 // env.js と Supabase SDK が読み込まれていれば自動接続
 initSupabase();
 
+// ===== PIN AUTHENTICATION =====
+window.hasPIN = function(member) {
+  var pins = loadFromStorage('kaiwai_pins', {});
+  return !!(pins[member] && String(pins[member]).length === 4);
+};
+
+window.savePIN = function(member, pin) {
+  var pins = loadFromStorage('kaiwai_pins', {});
+  if (pin && String(pin).length === 4) pins[member] = String(pin);
+  else delete pins[member];
+  try { localStorage.setItem('kaiwai_pins', JSON.stringify(pins)); } catch(e) {}
+};
+
+window.checkPIN = function(member, pin) {
+  var pins = loadFromStorage('kaiwai_pins', {});
+  return pins[member] === String(pin);
+};
+
+// ===== COMMENTS =====
+window.getTaskComments = function(taskId) {
+  return loadFromStorage('kaiwai_comments', []).filter(function(c) { return c.taskId === taskId; });
+};
+
+window.addTaskComment = function(taskId, author, text) {
+  var all = loadFromStorage('kaiwai_comments', []);
+  var c = { id: genId(), taskId: taskId, author: author, text: text.trim(), createdAt: new Date().toISOString() };
+  all.push(c);
+  try { localStorage.setItem('kaiwai_comments', JSON.stringify(all)); } catch(e) {}
+  return c;
+};
+
+window.deleteTaskComment = function(commentId) {
+  var all = loadFromStorage('kaiwai_comments', []).filter(function(c) { return c.id !== commentId; });
+  try { localStorage.setItem('kaiwai_comments', JSON.stringify(all)); } catch(e) {}
+};
+
+// ===== DUE DATE NOTIFICATIONS =====
+window.checkDueDateNotifications = function(tasks, member) {
+  var today = new Date();
+  var todayStr = today.toISOString().split('T')[0];
+  var tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+  var tomorrowStr = tomorrow.toISOString().split('T')[0];
+  var sentKey = 'seed_duenotifs_' + member + '_' + todayStr;
+  var sentIds = loadFromStorage(sentKey, []);
+  var myTasks = tasks.filter(function(t) { return t.assignee === member && t.status !== '完了'; });
+  var newNotifs = [];
+  myTasks.forEach(function(t) {
+    if (sentIds.indexOf(t.id) >= 0) return;
+    var label = t.title.length > 18 ? t.title.slice(0, 18) + '…' : t.title;
+    var msg = null;
+    if (t.dueDate === todayStr) {
+      msg = '⏰ 本日締め切り：「' + label + '」';
+    } else if (t.dueDate === tomorrowStr) {
+      msg = '📅 明日締め切り：「' + label + '」';
+    } else if (t.dueDate && t.dueDate < todayStr) {
+      msg = '🚨 期限切れ：「' + label + '」の期限が過ぎています';
+    }
+    if (msg) {
+      newNotifs.push({ id: genId(), type: 'due_date', taskId: t.id, message: msg, createdAt: new Date().toISOString(), readBy: [] });
+      sentIds.push(t.id);
+    }
+  });
+  if (newNotifs.length > 0) {
+    var store = loadFromStorage('seed_notifications', []);
+    newNotifs.forEach(function(n) { store.unshift(n); });
+    try { localStorage.setItem('seed_notifications', JSON.stringify(store)); } catch(e) {}
+    if (window.db) window._syncToDB('notifications', store, 'replace');
+    try { localStorage.setItem(sentKey, JSON.stringify(sentIds)); } catch(e) {}
+  }
+  return newNotifs;
+};
+
 // ===== AVATAR CUSTOMIZATION =====
 window.AVATAR_COLOR_OPTIONS = {
   green:  { bg:"#DCFCE7", ring:"#4CAF50",  text:"#166534", avatarBg:"#86EFAC" },
