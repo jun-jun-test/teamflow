@@ -85,6 +85,7 @@ function DashboardPage({ currentUser, tasks, setTasks, kpis, setKpis, isMobile, 
     var updated = kpis.filter(k => k.id!==id);
     setKpis(updated);
     saveToStorage(STORAGE_KEYS.KPIS, updated);
+    if (window.deleteFromDB) deleteFromDB('kpis', id);
   }
 
   // ⑥ Task edit functions

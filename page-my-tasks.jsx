@@ -126,6 +126,7 @@ function MyTasksPage({ currentUser, tasks, setTasks, isMobile }) {
     var updated = tasks.filter(function(t){ return t.id !== taskId; });
     setTasks(updated);
     saveToStorage(STORAGE_KEYS.TASKS, updated);
+    if (window.deleteFromDB) deleteFromDB('tasks', taskId);
     setSelectedIds(new Set());
   }
 
@@ -161,9 +162,11 @@ function MyTasksPage({ currentUser, tasks, setTasks, isMobile }) {
 
   function bulkDelete() {
     if (!window.confirm(selectedIds.size + '件のタスクを削除しますか？')) return;
+    var idsToDelete = Array.from(selectedIds);
     var updated = tasks.filter(function(t){ return !selectedIds.has(t.id); });
     setTasks(updated);
     saveToStorage(STORAGE_KEYS.TASKS, updated);
+    if (window.deleteFromDB) idsToDelete.forEach(function(id){ deleteFromDB('tasks', id); });
     setSelectedIds(new Set());
   }
 

@@ -225,12 +225,23 @@ window._syncSingleToDB = async function(table, id, data) {
 };
 
 // saveToStorage を上書き: localStorage + Supabase の両方に保存する
+// 特定レコードをSupabaseから削除する
+window.deleteFromDB = async function(table, id) {
+  if (!window.db) return;
+  try {
+    var res = await window.db.from(table).delete().eq('id', id);
+    if (res.error) console.warn('[Supabase] delete error (' + table + '):', res.error.message);
+  } catch(e) {
+    console.warn('[Supabase] delete failed (' + table + '):', e);
+  }
+};
+
 window.saveToStorage = function(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch(e) {}
   if (!window.db) return;
   if (Array.isArray(value)) {
     if      (key === STORAGE_KEYS.TASKS)       window._syncToDB('tasks',         value, 'upsert');
-    else if (key === STORAGE_KEYS.KPIS)        window._syncToDB('kpis',          value, 'upsert');
+    else if (key === STORAGE_KEYS.KPIS)        window._syncToDB('kpis',          value, 'replace');
     else if (key === STORAGE_KEYS.FLOWS)       window._syncToDB('flows',         value, 'replace');
     else if (key === 'kaiwai_bottlenecks')     window._syncToDB('bottlenecks',   value, 'replace');
     else if (key === 'kaiwai_related_tasks')   window._syncToDB('related_tasks', value, 'replace');
