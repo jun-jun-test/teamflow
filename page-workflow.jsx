@@ -1,3 +1,4 @@
+// ===== PRIORITY COLOR MAPS (module-level) =====
 const BN_PRI_COLOR_GLOBAL = {
   "高":{ bg:"#FEF2F2", border:"#FECACA", text:"#DC2626", icon:"🔴" },
   "中":{ bg:"#FFF7ED", border:"#FED7AA", text:"#EA580C", icon:"🟡" },
@@ -5,7 +6,6 @@ const BN_PRI_COLOR_GLOBAL = {
 };
 const BN_PRIORITIES_GLOBAL = ["高","中","低"];
 
-// Flow priority colors
 const FLOW_PRI_COLORS = {
   "高": { bg:"#FEF2F2", border:"#FECACA", activeBorder:"#F87171", text:"#DC2626", dot:"#EF4444", badge:"🔴 高" },
   "中": { bg:"#FFF7ED", border:"#FED7AA", activeBorder:"#FB923C", text:"#EA580C", dot:"#F97316", badge:"🟡 中" },
@@ -74,6 +74,7 @@ function FlowMetaModal({ flow, onSave, onDelete, onClose }) {
   );
 }
 
+// ===== BOTTLENECK FORM MODAL =====
 function BnFormModal({ bnEdit, bottlenecks, saveBottlenecks, onClose }) {
   const isNew = !bnEdit;
   const [formTitle, setFormTitle] = React.useState(bnEdit?.title || "");
@@ -124,120 +125,339 @@ function BnFormModal({ bnEdit, bottlenecks, saveBottlenecks, onClose }) {
   );
 }
 
-// ① バグ修正：FlowStepCard を WorkflowPage の外に定義
-const STEP_ICONS = ["👥","📸","📝","✈️","📬","✅","🔍","⚙️","📊"];
+// ===== TASK ITEM: チェックボックス一行（ステップ内のタスク） =====
+function TaskItem({ task, editable, onToggle, onRemove, onRename }) {
+  const [editing, setEditing] = React.useState(false);
+  const [draftTitle, setDraftTitle] = React.useState(task.title);
 
-function FlowStepCard({ step, idx, editable, onUpdate, onMove, onRemove }) {
-  const c = STATUS_COLORS[step.status] || {};
-  const assignees = step.assignees || (step.assignee ? [step.assignee] : [MEMBERS[0]]);
-  var isDone = step.status === "完了";
-
-  function toggleAssignee(name) {
-    const current = step.assignees || [step.assignee || MEMBERS[0]];
-    const next = current.includes(name)
-      ? current.length > 1 ? current.filter(m => m !== name) : current
-      : [...current, name];
-    onUpdate({ assignees: next, assignee: next[0] });
+  function commitRename() {
+    const t = draftTitle.trim();
+    if (t && t !== task.title) onRename(t);
+    setEditing(false);
   }
 
   return (
-    <div>
-      <div style={{ display:"flex", alignItems:"flex-start", gap:14, padding:"14px 18px", background:isDone?"#F3F4F6":"white", borderRadius:14, boxShadow:isDone?"none":"0 1px 6px rgba(0,0,0,0.07)", border:`1px solid ${isDone?"#D1D5DB":c.border||"#E5E7EB"}`, opacity:isDone?0.72:1, transition:"all 0.2s", position:"relative" }}>
-        {isDone && <div style={{ position:"absolute",top:8,right:10,background:"#16A34A",color:"white",borderRadius:9999,padding:"2px 8px",fontSize:10,fontWeight:700 }}>✓ 完了</div>}
-        <div style={{ width:32, height:32, borderRadius:"50%", background:isDone?"#9CA3AF":"var(--accent,#22C55E)", color:"white", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:14, flexShrink:0, marginTop:2 }}>
-          {isDone ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg> : idx+1}
+    <div style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 0", borderBottom:"1px solid #F3F4F6", minHeight:34 }}>
+      {/* チェックボックス — 常にクリック可能 */}
+      <button
+        onClick={onToggle}
+        style={{
+          width:20, height:20, borderRadius:5, flexShrink:0,
+          border:`2px solid ${task.done ? "var(--accent,#22C55E)" : "#D1D5DB"}`,
+          background: task.done ? "var(--accent,#22C55E)" : "white",
+          display:"flex", alignItems:"center", justifyContent:"center",
+          cursor:"pointer", padding:0, transition:"all 0.15s",
+        }}
+      >
+        {task.done && (
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5">
+            <path d="M20 6L9 17l-5-5"/>
+          </svg>
+        )}
+      </button>
+
+      {/* タイトル（編集モード時はダブルクリックで入力） */}
+      {editing ? (
+        <input
+          autoFocus
+          value={draftTitle}
+          onChange={e => setDraftTitle(e.target.value)}
+          onBlur={commitRename}
+          onKeyDown={e => {
+            if (e.key === "Enter")  commitRename();
+            if (e.key === "Escape") { setDraftTitle(task.title); setEditing(false); }
+          }}
+          style={{ flex:1, fontSize:13, border:"1px solid #E5E7EB", borderRadius:6, padding:"2px 8px", outline:"none" }}
+        />
+      ) : (
+        <span
+          onDoubleClick={() => editable && setEditing(true)}
+          title={editable ? "ダブルクリックで編集" : ""}
+          style={{
+            flex:1, fontSize:13, lineHeight:1.5,
+            color: task.done ? "#9CA3AF" : "#374151",
+            textDecoration: task.done ? "line-through" : "none",
+            cursor: editable ? "text" : "default",
+            transition:"color 0.2s, text-decoration 0.2s",
+          }}
+        >
+          {task.title}
+        </span>
+      )}
+
+      {/* 削除ボタン（編集モードのみ） */}
+      {editable && (
+        <button
+          onClick={onRemove}
+          style={{ background:"none", border:"none", color:"#D1D5DB", cursor:"pointer",
+                   fontSize:18, lineHeight:1, padding:"0 2px", flexShrink:0,
+                   display:"flex", alignItems:"center" }}
+        >
+          ×
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ===== TIMELINE STEP CARD =====
+// 縦タイムラインの1ステップ。左レールに円とラインを配置し、右にカードを表示する。
+// 状態: 未着手（白・グレー）/ 進行中（グリーンボーダー・パルスアニメ）/ 完了（グレーアウト）
+const STEP_ICONS_TL = ["🎯","📋","🚀","📣","📬","✅","🔍","💬","⚙️","📊"];
+
+function TimelineStepCard({ step, idx, isLast, editable, onUpdate, onMove, onRemove, onToggleTask, onAddTask, onRemoveTask, onRenameTask }) {
+  const isDone   = step.status === "完了";
+  const isActive = step.status === "進行中";
+  const tasks    = step.tasks || [];
+  const doneTasks = tasks.filter(t => t.done).length;
+  const assignees = step.assignees || (step.assignee ? [step.assignee] : [MEMBERS[0]]);
+
+  const [addingTask,    setAddingTask]    = React.useState(false);
+  const [newTaskTitle,  setNewTaskTitle]  = React.useState("");
+
+  function commitAddTask() {
+    const t = newTaskTitle.trim();
+    if (t) onAddTask(t);
+    setNewTaskTitle("");
+    setAddingTask(false);
+  }
+
+  function toggleAssignee(name) {
+    const next = assignees.includes(name)
+      ? (assignees.length > 1 ? assignees.filter(m => m !== name) : assignees)
+      : [...assignees, name];
+    onUpdate({ assignees: next, assignee: next[0] });
+  }
+
+  // ステータス別スタイル
+  const dotStyle = isDone
+    ? { background:"#9CA3AF" }
+    : isActive
+      ? { background:"var(--accent,#22C55E)", animation:"workflowPulse 2s ease-in-out infinite" }
+      : { background:"#E5E7EB" };
+
+  const cardStyle = isDone
+    ? { background:"#F9FAFB", border:"1px solid #E9ECEF", boxShadow:"none", opacity:0.72 }
+    : isActive
+      ? { background:"white", border:"2px solid var(--accent,#22C55E)", boxShadow:"0 4px 24px rgba(34,197,94,0.14)" }
+      : { background:"white", border:"1px solid #E5E7EB", boxShadow:"0 1px 6px rgba(0,0,0,0.05)" };
+
+  const titleStyle = isDone
+    ? { color:"#9CA3AF", textDecoration:"line-through" }
+    : isActive
+      ? { color:"#1F2937" }
+      : { color:"#6B7280" };
+
+  const lineColor = isDone ? "#D1D5DB" : "#E5E7EB";
+
+  return (
+    <div style={{ display:"flex", gap:0 }}>
+      {/* ── 左レール（タイムライン縦線＋ドット） ── */}
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", width:48, flexShrink:0 }}>
+        {/* ステップ番号ドット */}
+        <div style={{
+          width:36, height:36, borderRadius:"50%", flexShrink:0, zIndex:1,
+          display:"flex", alignItems:"center", justifyContent:"center",
+          transition:"all 0.3s ease", ...dotStyle
+        }}>
+          {isDone
+            ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5"><path d="M20 6L9 17l-5-5"/></svg>
+            : <span style={{ color: isActive ? "white" : "#9CA3AF", fontWeight:800, fontSize:14 }}>{idx + 1}</span>
+          }
         </div>
-        <div style={{ width:40, height:40, borderRadius:10, background:"var(--accent-light,#DCFCE7)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>
-          {STEP_ICONS[idx % STEP_ICONS.length]}
-        </div>
-        <div style={{ flex:1, minWidth:0 }}>
-          {editable ? (
-            <input value={step.title} onChange={e => onUpdate({ title: e.target.value })} style={{ fontSize:14, fontWeight:600, color:"#1F2937", border:"1px solid #E5E7EB", borderRadius:6, padding:"4px 8px", width:"100%", outline:"none", marginBottom:8 }} />
-          ) : (
-            <div style={{ fontSize:14, fontWeight:600, color:isDone?"#6B7280":"#1F2937", textDecoration:isDone?"line-through":"none", marginBottom:4 }}>{step.title}</div>
-          )}
-          {editable ? (
-            <div>
-              <div style={{ fontSize:11, color:"#9CA3AF", marginBottom:5, fontWeight:600 }}>担当者（複数選択可）</div>
-              <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+        {/* コネクターライン */}
+        {!isLast && (
+          <div style={{ width:2, flex:1, minHeight:24, marginTop:4, background:lineColor, transition:"background 0.3s" }} />
+        )}
+      </div>
+
+      {/* ── ステップカード ── */}
+      <div style={{ flex:1, marginBottom:20, borderRadius:14, overflow:"hidden", transition:"all 0.3s ease", ...cardStyle }}>
+        {/* カードヘッダー */}
+        <div style={{ padding:"14px 16px 10px", display:"flex", alignItems:"flex-start", gap:10 }}>
+          <span style={{ fontSize:20, flexShrink:0, lineHeight:1.4, opacity: isDone ? 0.5 : 1 }}>
+            {STEP_ICONS_TL[idx % STEP_ICONS_TL.length]}
+          </span>
+
+          <div style={{ flex:1, minWidth:0 }}>
+            {/* ステップタイトル */}
+            {editable ? (
+              <input
+                value={step.title}
+                onChange={e => onUpdate({ title: e.target.value })}
+                style={{ fontSize:14, fontWeight:700, color:"#1F2937", border:"1px solid #E5E7EB",
+                         borderRadius:6, padding:"4px 8px", width:"100%", outline:"none", marginBottom:6 }}
+              />
+            ) : (
+              <div style={{ fontSize:14, fontWeight:700, marginBottom:4, transition:"all 0.2s", ...titleStyle }}>
+                {step.title}
+              </div>
+            )}
+
+            {/* 担当者 */}
+            {editable ? (
+              <div style={{ display:"flex", flexWrap:"wrap", gap:4, marginTop:4 }}>
                 {MEMBERS.map(m => {
                   const sel = assignees.includes(m);
-                  const mc = MEMBER_COLORS[m] || {};
+                  const mc  = MEMBER_COLORS[m] || {};
                   return (
-                    <button key={m} onClick={() => toggleAssignee(m)} title={m} style={{ display:"flex", alignItems:"center", gap:5, padding:"4px 8px 4px 4px", borderRadius:9999, border:`2px solid ${sel ? mc.ring||"var(--accent,#22C55E)" : "#E5E7EB"}`, background:sel?(mc.bg||"var(--accent-light,#DCFCE7)"):"white", cursor:"pointer", position:"relative" }}>
-                      <MemberAvatar name={m} size={20} />
+                    <button key={m} onClick={() => toggleAssignee(m)}
+                      style={{ display:"flex", alignItems:"center", gap:4, padding:"3px 8px 3px 3px",
+                               borderRadius:9999, border:`2px solid ${sel ? mc.ring||"var(--accent,#22C55E)" : "#E5E7EB"}`,
+                               background: sel ? (mc.bg||"var(--accent-light,#DCFCE7)") : "white", cursor:"pointer" }}>
+                      <MemberAvatar name={m} size={18} />
                       <span style={{ fontSize:11, fontWeight:sel?700:500, color:sel?(mc.text||"var(--accent-text,#15803D)"):"#6B7280" }}>{m}</span>
-                      {sel && <span style={{ position:"absolute", top:-4, right:-4, width:14, height:14, borderRadius:"50%", background:mc.ring||"var(--accent,#22C55E)", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5"><path d="M20 6L9 17l-5-5"/></svg></span>}
                     </button>
                   );
                 })}
               </div>
-            </div>
-          ) : (
-            <div style={{ display:"flex", alignItems:"center", gap:4, flexWrap:"wrap" }}>
-              {assignees.map((m, i) => (
-                <div key={m} style={{ display:"flex", alignItems:"center", gap:4 }}>
-                  <MemberAvatar name={m} size={18} />
-                  <span style={{ fontSize:12, color:"#6B7280" }}>{m}</span>
-                  {i < assignees.length - 1 && <span style={{ fontSize:11, color:"#D1D5DB" }}>·</span>}
-                </div>
+            ) : (
+              <div style={{ display:"flex", alignItems:"center", gap:4, flexWrap:"wrap" }}>
+                {assignees.map((m, i) => (
+                  <div key={m} style={{ display:"flex", alignItems:"center", gap:3 }}>
+                    <MemberAvatar name={m} size={16} />
+                    <span style={{ fontSize:11, color: isDone ? "#9CA3AF" : "#6B7280" }}>{m}</span>
+                    {i < assignees.length - 1 && <span style={{ color:"#D1D5DB", fontSize:10 }}>·</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 右側：バッジ＋タスク進捗＋編集コントロール */}
+          <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:5, flexShrink:0 }}>
+            {/* ステータスバッジ */}
+            {isDone && (
+              <span style={{ background:"#D1FAE5", color:"#059669", border:"1px solid #A7F3D0", borderRadius:9999,
+                             padding:"2px 9px", fontSize:10, fontWeight:700, whiteSpace:"nowrap" }}>
+                ✓ 完了
+              </span>
+            )}
+            {isActive && (
+              <span style={{ background:"var(--accent-light,#DCFCE7)", color:"var(--accent-text,#15803D)",
+                             border:"1px solid var(--accent,#22C55E)", borderRadius:9999,
+                             padding:"2px 9px", fontSize:10, fontWeight:700, whiteSpace:"nowrap" }}>
+                ▶ 進行中
+              </span>
+            )}
+            {/* タスク進捗カウント */}
+            {tasks.length > 0 && (
+              <span style={{ fontSize:11, fontWeight:600, whiteSpace:"nowrap",
+                             color: isDone ? "#9CA3AF" : isActive ? "var(--accent-text,#15803D)" : "#9CA3AF" }}>
+                {doneTasks}/{tasks.length}
+              </span>
+            )}
+            {/* 編集モード用コントロール */}
+            {editable && (
+              <div style={{ display:"flex", gap:3, marginTop:2 }}>
+                <select value={step.status} onChange={e => onUpdate({ status: e.target.value })}
+                  style={{ fontSize:11, border:"1px solid #E5E7EB", borderRadius:6, padding:"3px 6px", color: (STATUS_COLORS[step.status]||{}).text, background: (STATUS_COLORS[step.status]||{}).bg }}>
+                  {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <button onClick={() => onMove(-1)} style={{ background:"#F3F4F6", border:"none", borderRadius:4, cursor:"pointer", padding:"3px 7px", fontSize:11 }}>↑</button>
+                <button onClick={() => onMove(1)}  style={{ background:"#F3F4F6", border:"none", borderRadius:4, cursor:"pointer", padding:"3px 7px", fontSize:11 }}>↓</button>
+                <button onClick={onRemove}         style={{ background:"#FEE2E2", border:"none", borderRadius:4, cursor:"pointer", padding:"3px 7px", fontSize:11, color:"#DC2626" }}>✕</button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── タスクリスト ── */}
+        {(tasks.length > 0 || editable) && (
+          <div style={{ padding:"0 16px 12px", borderTop:`1px solid ${isDone ? "#F3F4F6" : "#F0F0F0"}` }}>
+            {/* タスク一覧 */}
+            <div style={{ paddingTop:6 }}>
+              {tasks.map(task => (
+                <TaskItem
+                  key={task.id}
+                  task={task}
+                  editable={editable}
+                  onToggle={() => onToggleTask(task.id)}
+                  onRemove={() => onRemoveTask(task.id)}
+                  onRename={(title) => onRenameTask(task.id, title)}
+                />
               ))}
+              {tasks.length === 0 && !editable && (
+                <div style={{ fontSize:12, color:"#D1D5DB", padding:"8px 0", textAlign:"center" }}>タスクがありません</div>
+              )}
             </div>
-          )}
-        </div>
-        <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6, flexShrink:0 }}>
-          {editable ? (
-            <select value={step.status} onChange={e => onUpdate({ status: e.target.value })} style={{ fontSize:12, border:"1px solid #E5E7EB", borderRadius:8, padding:"4px 8px", color:c.text, background:c.bg }}>
-              {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          ) : (
-            <StatusBadge status={step.status} />
-          )}
-          {editable && (
-            <div style={{ display:"flex", gap:4 }}>
-              <button onClick={() => onMove(-1)} style={{ background:"#F3F4F6", border:"none", borderRadius:4, cursor:"pointer", padding:"2px 8px", fontSize:12 }}>↑</button>
-              <button onClick={() => onMove(1)}  style={{ background:"#F3F4F6", border:"none", borderRadius:4, cursor:"pointer", padding:"2px 8px", fontSize:12 }}>↓</button>
-              <button onClick={() => onRemove()} style={{ background:"#FEE2E2", border:"none", borderRadius:4, cursor:"pointer", padding:"2px 8px", fontSize:12, color:"#DC2626" }}>✕</button>
-            </div>
-          )}
-        </div>
-      </div>
-      <div style={{ display:"flex", justifyContent:"center", padding:"6px 0" }}>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+
+            {/* タスク追加UI（編集モード時のみ） */}
+            {editable && (
+              <div style={{ marginTop:8 }}>
+                {addingTask ? (
+                  <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+                    <input
+                      autoFocus
+                      value={newTaskTitle}
+                      onChange={e => setNewTaskTitle(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter")  commitAddTask();
+                        if (e.key === "Escape") { setAddingTask(false); setNewTaskTitle(""); }
+                      }}
+                      placeholder="タスク名を入力して Enter"
+                      style={{ flex:1, fontSize:12, border:"1px solid var(--accent,#22C55E)", borderRadius:7,
+                               padding:"6px 10px", outline:"none" }}
+                    />
+                    <button onClick={commitAddTask}
+                      style={{ fontSize:12, padding:"6px 12px", borderRadius:7, background:"var(--accent,#22C55E)",
+                               color:"white", border:"none", cursor:"pointer", fontWeight:700, whiteSpace:"nowrap" }}>
+                      追加
+                    </button>
+                    <button onClick={() => { setAddingTask(false); setNewTaskTitle(""); }}
+                      style={{ fontSize:12, padding:"6px 10px", borderRadius:7, background:"#F3F4F6",
+                               color:"#6B7280", border:"none", cursor:"pointer" }}>
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => setAddingTask(true)}
+                    style={{ display:"flex", alignItems:"center", gap:5, fontSize:12, color:"#9CA3AF",
+                             background:"none", border:"1.5px dashed #E5E7EB", borderRadius:8, padding:"6px 14px",
+                             cursor:"pointer", width:"100%", marginTop:4, justifyContent:"center",
+                             transition:"border-color 0.15s, color 0.15s" }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor="var(--accent,#22C55E)"; e.currentTarget.style.color="var(--accent-text,#15803D)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor="#E5E7EB"; e.currentTarget.style.color="#9CA3AF"; }}
+                  >
+                    <span style={{ fontSize:16, lineHeight:1 }}>+</span> タスクを追加
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
+// ===== WORKFLOW PAGE =====
 function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initialRelatedTasks }) {
   const [flows, setFlows] = React.useState(() =>
     (initialFlows && initialFlows.length > 0) ? initialFlows : loadFromStorage(STORAGE_KEYS.FLOWS, SAMPLE_FLOWS)
   );
   const [selectedFlowId, setSelectedFlowId] = React.useState(flows[0]?.id || null);
-  const [showBuilder, setShowBuilder] = React.useState(false);
-  const [editingFlow, setEditingFlow] = React.useState(null);
-  const [newFlowTitle, setNewFlowTitle] = React.useState("");
-  const [newFlowBiz, setNewFlowBiz] = React.useState(BUSINESSES[0]);
-  const [newFlowPri, setNewFlowPri] = React.useState("中");
-  const [editMetaFlow, setEditMetaFlow] = React.useState(null);
-  const [showAllRT, setShowAllRT] = React.useState(false);
+  const [showBuilder,    setShowBuilder]    = React.useState(false);
+  const [editingFlow,    setEditingFlow]    = React.useState(null);
+  const [newFlowTitle,   setNewFlowTitle]   = React.useState("");
+  const [newFlowBiz,     setNewFlowBiz]     = React.useState(BUSINESSES[0]);
+  const [newFlowPri,     setNewFlowPri]     = React.useState("中");
+  const [editMetaFlow,   setEditMetaFlow]   = React.useState(null);
+  const [showAllRT,      setShowAllRT]      = React.useState(false);
 
-  // ① 関連タスク state
+  // 関連タスク
   const RT_KEY = "kaiwai_related_tasks";
   const [relatedTasks, setRelatedTasks] = React.useState(function() {
     if (initialRelatedTasks && initialRelatedTasks.length > 0) return initialRelatedTasks;
     return loadFromStorage(RT_KEY, RELATED_TASKS);
   });
-
-  // Supabaseからデータが遅れて届いた場合に反映する
   React.useEffect(function() {
-    if (initialRelatedTasks && initialRelatedTasks.length > 0) {
-      setRelatedTasks(initialRelatedTasks);
-    }
+    if (initialRelatedTasks && initialRelatedTasks.length > 0) setRelatedTasks(initialRelatedTasks);
   }, [initialRelatedTasks]);
-  const [rtModalOpen,   setRtModalOpen]   = React.useState(false);
-  const [editingRt,     setEditingRt]     = React.useState(null);
-  const [rtForm,        setRtForm]        = React.useState({ title:"", assignee:MEMBERS[0], dueDate:"", status:"未着手" });
+
+  const [rtModalOpen, setRtModalOpen] = React.useState(false);
+  const [editingRt,   setEditingRt]   = React.useState(null);
+  const [rtForm,      setRtForm]      = React.useState({ title:"", assignee:MEMBERS[0], dueDate:"", status:"未着手" });
 
   function saveRelatedTasks(updated) { setRelatedTasks(updated); saveToStorage(RT_KEY, updated); }
   function openRtNew() {
@@ -263,23 +483,19 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
     saveRelatedTasks(relatedTasks.filter(r => r.id!==id));
   }
 
-  // ── Bottleneck state ──────────────────────────────────────────
+  // ボトルネック
   const BN_KEY = "kaiwai_bottlenecks";
   const [bottlenecks, setBottlenecks] = React.useState(() =>
     (initialBottlenecks && initialBottlenecks.length > 0)
       ? initialBottlenecks
       : loadFromStorage(BN_KEY, BOTTLENECKS.map(b => ({ ...b, priority:"高", resolvedAt:null })))
   );
-  const [bnDetail, setBnDetail]     = React.useState(null);   // item being viewed
-  const [bnEdit, setBnEdit]         = React.useState(null);   // item being edited (null = new)
-  const [showBnForm, setShowBnForm] = React.useState(false);  // show add/edit form
-  const [showBnAll, setShowBnAll]   = React.useState(false);  // detail modal
+  const [bnDetail,   setBnDetail]   = React.useState(null);
+  const [bnEdit,     setBnEdit]     = React.useState(null);
+  const [showBnForm, setShowBnForm] = React.useState(false);
+  const [showBnAll,  setShowBnAll]  = React.useState(false);
 
-  function saveBottlenecks(updated) {
-    setBottlenecks(updated);
-    saveToStorage(BN_KEY, updated);
-  }
-
+  function saveBottlenecks(updated) { setBottlenecks(updated); saveToStorage(BN_KEY, updated); }
   function deleteBn(id) { saveBottlenecks(bottlenecks.filter(b => b.id !== id)); }
   function toggleResolved(id) {
     saveBottlenecks(bottlenecks.map(b => b.id !== id ? b : {
@@ -289,10 +505,10 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
 
   const BN_ICONS = ["👥","⏰","🔒","📦","💬","⚙️","📋","🚧"];
   const BN_PRI_COLOR = BN_PRI_COLOR_GLOBAL;
-  const BN_PRIORITIES = BN_PRIORITIES_GLOBAL;
 
   const selectedFlow = flows.find(f => f.id === selectedFlowId);
 
+  // ── フロー保存 ──────────────────────────────────────────────────────
   function saveFlows(updated) {
     setFlows(updated);
     saveToStorage(STORAGE_KEYS.FLOWS, updated);
@@ -310,8 +526,7 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
   }
 
   function updateFlowMeta(flowId, changes) {
-    const updated = flows.map(f => f.id !== flowId ? f : { ...f, ...changes });
-    saveFlows(updated);
+    saveFlows(flows.map(f => f.id !== flowId ? f : { ...f, ...changes }));
   }
 
   function deleteFlow(flowId) {
@@ -321,6 +536,7 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
     setEditingFlow(null);
   }
 
+  // ── ステップ操作 ────────────────────────────────────────────────────
   function updateStep(flowId, stepId, changes) {
     const updated = flows.map(f => f.id !== flowId ? f : {
       ...f, steps: f.steps.map(s => s.id !== stepId ? s : { ...s, ...changes })
@@ -331,7 +547,16 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
 
   function addStep(flowId) {
     const flow = flows.find(f => f.id === flowId);
-    const newStep = { id: genId(), title: "新しいステップ", assignees: [MEMBERS[0]], status: "未着手", relatedTaskIds: [], order: flow.steps.length, description: "" };
+    const newStep = {
+      id: genId(),
+      title: "新しいステップ",
+      assignees: [MEMBERS[0]],
+      assignee: MEMBERS[0],
+      status: "未着手",
+      order: flow.steps.length,
+      description: "",
+      tasks: [],  // タスクを空で初期化
+    };
     const updated = flows.map(f => f.id !== flowId ? f : { ...f, steps: [...f.steps, newStep] });
     saveFlows(updated);
     if (editingFlow?.id === flowId) setEditingFlow(updated.find(f => f.id === flowId));
@@ -356,21 +581,111 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
     if (editingFlow?.id === flowId) setEditingFlow(updated.find(f => f.id === flowId));
   }
 
+  // ── タスク操作 ────────────────────────────────────────────────────
+  // チェックを切り替え。全タスク完了時はステップを「完了」に更新し次ステップを「進行中」へ自動遷移。
+  function toggleStepTask(flowId, stepId, taskId) {
+    const flow = flows.find(f => f.id === flowId);
+    if (!flow) return;
+    const step = flow.steps.find(s => s.id === stepId);
+    if (!step) return;
+
+    // タスクのdone状態を反転
+    const updatedTasks = (step.tasks || []).map(t =>
+      t.id !== taskId ? t : { ...t, done: !t.done }
+    );
+    const allDone  = updatedTasks.length > 0 && updatedTasks.every(t => t.done);
+    const anyDone  = updatedTasks.some(t => t.done);
+
+    // 新しいステップステータスを決定
+    let newStatus = step.status;
+    if (allDone) {
+      newStatus = "完了";
+    } else if (anyDone && step.status === "未着手") {
+      newStatus = "進行中";
+    } else if (!anyDone && step.status === "完了") {
+      newStatus = "未着手";
+    }
+
+    // ステップリストを更新
+    let updatedSteps = flow.steps.map(s =>
+      s.id !== stepId ? s : { ...s, tasks: updatedTasks, status: newStatus }
+    );
+
+    // 自動進行：このステップが「完了」に変わったなら、次の「未着手」ステップを「進行中」へ
+    if (allDone && step.status !== "完了") {
+      const sorted = [...updatedSteps].sort((a, b) => a.order - b.order);
+      const currentIdx = sorted.findIndex(s => s.id === stepId);
+      if (currentIdx < sorted.length - 1) {
+        const nextStep = sorted[currentIdx + 1];
+        if (nextStep.status === "未着手") {
+          updatedSteps = updatedSteps.map(s =>
+            s.id !== nextStep.id ? s : { ...s, status: "進行中" }
+          );
+        }
+      }
+    }
+
+    const updated = flows.map(f => f.id !== flowId ? f : { ...f, steps: updatedSteps });
+    saveFlows(updated);
+    if (editingFlow?.id === flowId) setEditingFlow(updated.find(f => f.id === flowId));
+  }
+
+  function addTaskToStep(flowId, stepId, title) {
+    const updated = flows.map(f => f.id !== flowId ? f : {
+      ...f, steps: f.steps.map(s => s.id !== stepId ? s : {
+        ...s, tasks: [...(s.tasks || []), { id: genId(), title, done: false }]
+      })
+    });
+    saveFlows(updated);
+    if (editingFlow?.id === flowId) setEditingFlow(updated.find(f => f.id === flowId));
+  }
+
+  function removeTaskFromStep(flowId, stepId, taskId) {
+    const updated = flows.map(f => f.id !== flowId ? f : {
+      ...f, steps: f.steps.map(s => s.id !== stepId ? s : {
+        ...s, tasks: (s.tasks || []).filter(t => t.id !== taskId)
+      })
+    });
+    saveFlows(updated);
+    if (editingFlow?.id === flowId) setEditingFlow(updated.find(f => f.id === flowId));
+  }
+
+  function renameStepTask(flowId, stepId, taskId, title) {
+    const updated = flows.map(f => f.id !== flowId ? f : {
+      ...f, steps: f.steps.map(s => s.id !== stepId ? s : {
+        ...s, tasks: (s.tasks || []).map(t => t.id !== taskId ? t : { ...t, title })
+      })
+    });
+    saveFlows(updated);
+    if (editingFlow?.id === flowId) setEditingFlow(updated.find(f => f.id === flowId));
+  }
+
+  // ── 事業別進捗 ──────────────────────────────────────────────────────
   const projectProgress = BUSINESSES.map(b => {
     const bt = tasks.filter(t => t.business === b);
     return { name: b, pct: calcProgress(bt), count: bt.filter(t => t.status === "進行中").length };
   });
-
   const businessIcons = { "サークル間マッチング事業":"👥", "診断コンテンツ事業":"❓", "SNSメディア事業":"📣" };
+
+  // 選択中フローのタスク完了率
+  const flowProgress = selectedFlow
+    ? (() => {
+        const allTasks = (selectedFlow.steps || []).flatMap(s => s.tasks || []);
+        if (!allTasks.length) return null;
+        const done = allTasks.filter(t => t.done).length;
+        return { done, total: allTasks.length, pct: Math.round(done / allTasks.length * 100) };
+      })()
+    : null;
 
   return (
     <div>
+      {/* ページタイトル */}
       <div style={{ marginBottom:24 }}>
         <h1 style={{ fontSize:24, fontWeight:800, color:"#1F2937", marginBottom:4 }}>ワークフロー</h1>
         <p style={{ fontSize:14, color:"#6B7280" }}>事業ごとの流れと現在地を確認できます。</p>
       </div>
 
-      {/* Project Progress Cards */}
+      {/* 事業別進捗カード */}
       <div style={{ display:"flex", gap:16, marginBottom:24, flexWrap:"wrap" }}>
         {projectProgress.map(pp => (
           <div key={pp.name} style={{ flex:1, minWidth:200, background:"white", borderRadius:16, padding:"18px 20px", boxShadow:"0 1px 8px rgba(0,0,0,0.07)" }}>
@@ -385,55 +700,52 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
         ))}
       </div>
 
-      {/* Flow selector + builder toggle */}
+      {/* フロー選択 + 新規作成 */}
       <div style={{ display:"flex", gap:10, marginBottom:20, flexWrap:"wrap", alignItems:"center" }}>
         {flows.map(f => {
           const active = selectedFlowId === f.id;
           const pc = f.priority ? FLOW_PRI_COLORS[f.priority] : null;
           return (
-            <button
-              key={f.id}
-              onClick={() => { setSelectedFlowId(f.id); setEditingFlow(null); }}
-              style={{
-                display:"flex", alignItems:"center", gap:7,
-                padding:"8px 16px", borderRadius:9999,
-                border: `2px solid ${active ? (pc ? pc.activeBorder : "#4CAF50") : "#E5E7EB"}`,
-                background: active ? (pc ? pc.bg : "#EAF7EA") : "white",
-                color: active ? (pc ? pc.text : "#4CAF50") : "#6B7280",
-                fontWeight: active ? 700 : 500, fontSize:13, cursor:"pointer",
-                transition:"all 0.15s",
-              }}
-            >
+            <button key={f.id} onClick={() => { setSelectedFlowId(f.id); setEditingFlow(null); }}
+              style={{ display:"flex", alignItems:"center", gap:7, padding:"8px 16px", borderRadius:9999,
+                       border:`2px solid ${active ? (pc ? pc.activeBorder : "#4CAF50") : "#E5E7EB"}`,
+                       background: active ? (pc ? pc.bg : "#EAF7EA") : "white",
+                       color: active ? (pc ? pc.text : "#4CAF50") : "#6B7280",
+                       fontWeight: active ? 700 : 500, fontSize:13, cursor:"pointer", transition:"all 0.15s" }}>
               <span style={{ width:8, height:8, borderRadius:"50%", background: pc ? pc.dot : "#D1D5DB", flexShrink:0, display:"inline-block" }} />
               {f.title}
               {f.priority && (
-                <span style={{ fontSize:10, fontWeight:700, padding:"1px 5px", borderRadius:9999, background: active ? "rgba(255,255,255,0.6)" : (pc ? pc.bg : "#F3F4F6"), color: pc ? pc.text : "#6B7280", border:"1px solid " + (pc ? pc.border : "#E5E7EB") }}>
+                <span style={{ fontSize:10, fontWeight:700, padding:"1px 5px", borderRadius:9999,
+                               background: active ? "rgba(255,255,255,0.6)" : (pc ? pc.bg : "#F3F4F6"),
+                               color: pc ? pc.text : "#6B7280", border:"1px solid " + (pc ? pc.border : "#E5E7EB") }}>
                   {f.priority}
                 </span>
               )}
             </button>
           );
         })}
-        <button onClick={() => setShowBuilder(!showBuilder)} style={{ padding:"8px 16px", borderRadius:9999, border:"2px dashed #D1D5DB", background:"white", color:"#6B7280", fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
+        <button onClick={() => setShowBuilder(!showBuilder)}
+          style={{ padding:"8px 16px", borderRadius:9999, border:"2px dashed #D1D5DB", background:"white",
+                   color:"#6B7280", fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
           <span style={{ fontSize:16 }}>+</span> 新しいフロー
         </button>
       </div>
 
-      {/* New Flow Form */}
+      {/* 新規フロー作成フォーム */}
       {showBuilder && (
         <div style={{ background:"white", borderRadius:14, padding:"18px 20px", boxShadow:"0 1px 8px rgba(0,0,0,0.07)", marginBottom:20 }}>
           <div style={{ display:"flex", gap:12, flexWrap:"wrap", alignItems:"center", marginBottom:12 }}>
             <input value={newFlowTitle} onChange={e => setNewFlowTitle(e.target.value)} placeholder="フロー名を入力..." style={{ flex:1, minWidth:180, border:"1.5px solid #E5E7EB", borderRadius:8, padding:"8px 12px", fontSize:13, outline:"none" }} onFocus={e=>e.target.style.borderColor="#4CAF50"} onBlur={e=>e.target.style.borderColor="#E5E7EB"} />
-            <input value={newFlowBiz} onChange={e => setNewFlowBiz(e.target.value)} list="flow-biz-dl" placeholder="事業名を入力または選択" style={{ minWidth:160, border:"1.5px solid #E5E7EB", borderRadius:8, padding:"8px 12px", fontSize:13, outline:"none" }} onFocus={e=>e.target.style.borderColor="#4CAF50"} onBlur={e=>e.target.style.borderColor="#E5E7EB"} />
+            <input value={newFlowBiz} onChange={e => setNewFlowBiz(e.target.value)} list="flow-biz-dl" placeholder="事業名" style={{ minWidth:160, border:"1.5px solid #E5E7EB", borderRadius:8, padding:"8px 12px", fontSize:13, outline:"none" }} onFocus={e=>e.target.style.borderColor="#4CAF50"} onBlur={e=>e.target.style.borderColor="#E5E7EB"} />
             <datalist id="flow-biz-dl">{BUSINESSES.map(b => <option key={b} value={b}/>)}</datalist>
           </div>
           <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
             <span style={{ fontSize:12, fontWeight:600, color:"#6B7280", whiteSpace:"nowrap" }}>優先度：</span>
-            {["高","中","低"].map(function(p) {
-              var pc = FLOW_PRI_COLORS[p];
-              var sel = newFlowPri === p;
+            {["高","中","低"].map(p => {
+              const pc = FLOW_PRI_COLORS[p];
+              const sel = newFlowPri === p;
               return (
-                <button key={p} onClick={() => setNewFlowPri(p)} style={{ padding:"5px 12px", borderRadius:9999, border:"2px solid " + (sel ? pc.activeBorder : "#E5E7EB"), background: sel ? pc.bg : "white", color: sel ? pc.text : "#6B7280", fontSize:12, fontWeight: sel?700:500, cursor:"pointer", transition:"all 0.12s" }}>
+                <button key={p} onClick={() => setNewFlowPri(p)} style={{ padding:"5px 12px", borderRadius:9999, border:"2px solid " + (sel ? pc.activeBorder : "#E5E7EB"), background: sel ? pc.bg : "white", color: sel ? pc.text : "#6B7280", fontSize:12, fontWeight: sel?700:500, cursor:"pointer" }}>
                   {pc.badge}
                 </button>
               );
@@ -446,63 +758,79 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
         </div>
       )}
 
-      {/* Main area: Flow + Related Tasks + Bottlenecks */}
+      {/* メインエリア：タイムライン + サイドパネル */}
       {selectedFlow && (
-        <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 360px", gap:16 }}>
-          {/* Flowchart */}
+        <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 340px", gap:16 }}>
+          {/* タイムラインカラム */}
           <div style={{ background:"white", borderRadius:16, padding:"24px", boxShadow:"0 1px 8px rgba(0,0,0,0.07)" }}>
+            {/* フロータイトル + 操作ボタン */}
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20, gap:12 }}>
-              {/* Title + priority badge + business */}
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                   <h2 style={{ fontSize:17, fontWeight:700, color:"#1F2937", margin:0 }}>{selectedFlow.title}</h2>
                   {selectedFlow.priority && (() => {
                     const pc = FLOW_PRI_COLORS[selectedFlow.priority];
-                    return (
-                      <span style={{ fontSize:11, fontWeight:700, color:pc.text, background:pc.bg, border:"1px solid " + pc.border, borderRadius:9999, padding:"2px 9px", whiteSpace:"nowrap" }}>
-                        {pc.badge}
-                      </span>
-                    );
+                    return <span style={{ fontSize:11, fontWeight:700, color:pc.text, background:pc.bg, border:"1px solid " + pc.border, borderRadius:9999, padding:"2px 9px", whiteSpace:"nowrap" }}>{pc.badge}</span>;
                   })()}
                 </div>
-                {selectedFlow.business && (
-                  <div style={{ fontSize:12, color:"#9CA3AF", marginTop:4 }}>{selectedFlow.business}</div>
+                {selectedFlow.business && <div style={{ fontSize:12, color:"#9CA3AF", marginTop:4 }}>{selectedFlow.business}</div>}
+                {/* 全体タスク進捗バー */}
+                {flowProgress && (
+                  <div style={{ marginTop:10 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+                      <span style={{ fontSize:11, color:"#9CA3AF" }}>タスク全体の進捗</span>
+                      <span style={{ fontSize:11, fontWeight:700, color:"var(--accent-text,#15803D)" }}>
+                        {flowProgress.done}/{flowProgress.total}完了（{flowProgress.pct}%）
+                      </span>
+                    </div>
+                    <ProgressBar value={flowProgress.pct} height={6} />
+                  </div>
                 )}
               </div>
-              {/* Action buttons */}
               <div style={{ display:"flex", gap:8, flexShrink:0 }}>
-                <button
-                  onClick={() => setEditMetaFlow(selectedFlow)}
-                  title="フロー名・事業・優先度を編集 / 削除"
-                  style={{ padding:"6px 10px", borderRadius:8, border:"1.5px solid #E5E7EB", background:"white", color:"#6B7280", fontSize:13, cursor:"pointer" }}
-                >
+                <button onClick={() => setEditMetaFlow(selectedFlow)} title="フロー名・事業・優先度を編集 / 削除"
+                  style={{ padding:"6px 10px", borderRadius:8, border:"1.5px solid #E5E7EB", background:"white", color:"#6B7280", fontSize:13, cursor:"pointer" }}>
                   ⚙️
                 </button>
-                <button onClick={() => setEditingFlow(editingFlow ? null : selectedFlow)} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid #4CAF50", background: editingFlow ? "#EAF7EA" : "white", color:"#4CAF50", fontSize:12, fontWeight:600, cursor:"pointer" }}>
-                  {editingFlow ? "編集中" : "✏️ ステップ編集"}
+                <button onClick={() => setEditingFlow(editingFlow ? null : selectedFlow)}
+                  style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid #4CAF50",
+                           background: editingFlow ? "#EAF7EA" : "white", color:"#4CAF50", fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                  {editingFlow ? "✓ 完了" : "✏️ 編集"}
                 </button>
                 {editingFlow && (
-                  <button onClick={() => addStep(selectedFlow.id)} style={{ padding:"6px 14px", borderRadius:8, border:"none", background:"#4CAF50", color:"white", fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                  <button onClick={() => addStep(selectedFlow.id)}
+                    style={{ padding:"6px 14px", borderRadius:8, border:"none", background:"#4CAF50", color:"white", fontSize:12, fontWeight:600, cursor:"pointer" }}>
                     + ステップ追加
                   </button>
                 )}
               </div>
             </div>
-            <div style={{ maxWidth:540, margin:"0 auto" }}>
+
+            {/* タイムライン本体 */}
+            <div style={{ maxWidth:560, margin:"0 auto" }}>
               {[...selectedFlow.steps].sort((a,b) => a.order - b.order).map((step, idx, arr) => (
-                <div key={step.id}>
-                  <FlowStepCard step={step} idx={idx} editable={!!editingFlow}
-                    onUpdate={(c) => updateStep(selectedFlow.id, step.id, c)}
-                    onMove={(d) => moveStep(selectedFlow.id, step.id, d)}
-                    onRemove={() => removeStep(selectedFlow.id, step.id)} />
-                  {idx === arr.length - 1 && <div style={{ height:16 }}></div>}
-                </div>
+                <TimelineStepCard
+                  key={step.id}
+                  step={step}
+                  idx={idx}
+                  isLast={idx === arr.length - 1}
+                  editable={!!editingFlow}
+                  onUpdate={(c) => updateStep(selectedFlow.id, step.id, c)}
+                  onMove={(d) => moveStep(selectedFlow.id, step.id, d)}
+                  onRemove={() => removeStep(selectedFlow.id, step.id)}
+                  onToggleTask={(taskId) => toggleStepTask(selectedFlow.id, step.id, taskId)}
+                  onAddTask={(title) => addTaskToStep(selectedFlow.id, step.id, title)}
+                  onRemoveTask={(taskId) => removeTaskFromStep(selectedFlow.id, step.id, taskId)}
+                  onRenameTask={(taskId, title) => renameStepTask(selectedFlow.id, step.id, taskId, title)}
+                />
               ))}
               {selectedFlow.steps.length === 0 && (
-                <div style={{ textAlign:"center", padding:"40px 0", color:"#9CA3AF", fontSize:14 }}>
+                <div style={{ textAlign:"center", padding:"48px 0", color:"#9CA3AF", fontSize:14 }}>
+                  <div style={{ fontSize:40, marginBottom:12 }}>📋</div>
                   ステップを追加してください
-                  <br />
-                  <button onClick={() => addStep(selectedFlow.id)} style={{ marginTop:12, padding:"8px 18px", borderRadius:8, background:"#4CAF50", color:"white", border:"none", fontSize:13, fontWeight:600, cursor:"pointer" }}>
+                  <br/>
+                  <button onClick={() => { setEditingFlow(selectedFlow); addStep(selectedFlow.id); }}
+                    style={{ marginTop:12, padding:"9px 20px", borderRadius:9, background:"#4CAF50", color:"white", border:"none", fontSize:13, fontWeight:600, cursor:"pointer" }}>
                     + ステップ追加
                   </button>
                 </div>
@@ -510,15 +838,18 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
             </div>
           </div>
 
-          {/* Right column */}
+          {/* サイドパネル（関連タスク + ボトルネック） */}
           <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-            {/* Related Tasks */}
+            {/* 関連タスク */}
             <div style={{ background:"white", borderRadius:16, padding:"20px", boxShadow:"0 1px 8px rgba(0,0,0,0.07)" }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
                 <span style={{ fontWeight:700, fontSize:15, color:"#1F2937" }}>関連タスク</span>
-                <SeeAllBtn expanded={showAllRT} count={RELATED_TASKS.length} limit={3} onToggle={() => setShowAllRT(v=>!v)} />
+                <button onClick={openRtNew}
+                  style={{ fontSize:12, color:"white", background:"var(--accent,#06C755)", border:"none",
+                           borderRadius:9999, padding:"3px 10px", fontWeight:700, cursor:"pointer" }}>
+                  ＋ 追加
+                </button>
               </div>
-              {/* ① 関連タスク一覧 */}
               <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                 {relatedTasks.length===0 && <div style={{ color:"#9CA3AF",fontSize:13 }}>関連タスクがありません</div>}
                 {(showAllRT ? relatedTasks : relatedTasks.slice(0,3)).map(rt => (
@@ -537,17 +868,14 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
                   </div>
                 ))}
               </div>
-              <div style={{ display:"flex",gap:8,marginTop:12 }}>
-                {relatedTasks.length > 3 && (
-                  <button onClick={() => setShowAllRT(v=>!v)} style={{ flex:1, padding:"7px", border:"1px solid #E5E7EB", borderRadius:8, background:"white", color:"#6B7280", fontSize:12, cursor:"pointer" }}>
-                    {showAllRT ? "閉じる ↑" : `すべて見る（${relatedTasks.length}件）`}
-                  </button>
-                )}
-                <button onClick={openRtNew} style={{ flex:1, padding:"7px", border:"none", borderRadius:8, background:"var(--accent,#06C755)", color:"white", fontSize:12, fontWeight:700, cursor:"pointer" }}>＋ 追加</button>
-              </div>
+              {relatedTasks.length > 3 && (
+                <button onClick={() => setShowAllRT(v=>!v)} style={{ width:"100%", marginTop:10, padding:"7px", border:"1px solid #E5E7EB", borderRadius:8, background:"white", color:"#6B7280", fontSize:12, cursor:"pointer" }}>
+                  {showAllRT ? "閉じる ↑" : `すべて見る（${relatedTasks.length}件）`}
+                </button>
+              )}
             </div>
 
-            {/* Bottlenecks */}
+            {/* ボトルネック */}
             <div style={{ background:"white", borderRadius:16, padding:"20px", boxShadow:"0 1px 8px rgba(0,0,0,0.07)" }}>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
@@ -562,8 +890,6 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
                   <button onClick={() => { setBnEdit(null); setShowBnForm(true); }} style={{ fontSize:12, color:"white", background:"var(--accent,#06C755)", border:"none", borderRadius:9999, padding:"3px 10px", fontWeight:700, cursor:"pointer" }}>＋ 追加</button>
                 </div>
               </div>
-
-              {/* List (open items only, max 3) */}
               <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                 {bottlenecks.filter(b=>!b.resolvedAt).slice(0,3).map((b, i) => {
                   const pc = BN_PRI_COLOR[b.priority] || BN_PRI_COLOR["中"];
@@ -578,8 +904,8 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
                         <div style={{ fontSize:12, color:"#6B7280", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{b.desc}</div>
                       </div>
                       <div style={{ display:"flex", gap:4, flexShrink:0 }}>
-                        <button onClick={() => { setBnEdit(b); setShowBnForm(true); }} style={{ fontSize:11, color:"#6B7280", background:"#F3F4F6", border:"none", borderRadius:6, padding:"3px 9px", cursor:"pointer", whiteSpace:"nowrap" }}>編集</button>
-                        <button onClick={() => setBnDetail(b)} style={{ fontSize:11, color:pc.text, background:"white", border:`1px solid ${pc.border}`, borderRadius:6, padding:"3px 9px", cursor:"pointer", whiteSpace:"nowrap" }}>詳細</button>
+                        <button onClick={() => { setBnEdit(b); setShowBnForm(true); }} style={{ fontSize:11, color:"#6B7280", background:"#F3F4F6", border:"none", borderRadius:6, padding:"3px 9px", cursor:"pointer" }}>編集</button>
+                        <button onClick={() => setBnDetail(b)} style={{ fontSize:11, color:pc.text, background:"white", border:`1px solid ${pc.border}`, borderRadius:6, padding:"3px 9px", cursor:"pointer" }}>詳細</button>
                       </div>
                     </div>
                   );
@@ -590,7 +916,6 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
                   </div>
                 )}
               </div>
-
               {bottlenecks.filter(b=>!b.resolvedAt).length > 3 && (
                 <button onClick={() => setShowBnAll(true)} style={{ width:"100%", marginTop:10, padding:"7px", border:"1px solid #E5E7EB", borderRadius:8, background:"white", color:"#6B7280", fontSize:12, cursor:"pointer" }}>
                   すべて見る（{bottlenecks.filter(b=>!b.resolvedAt).length}件）
@@ -601,7 +926,9 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
         </div>
       )}
 
-      {/* ── Bottleneck Detail Modal ── */}
+      {/* ─── モーダル群 ─────────────────────────────────────────────── */}
+
+      {/* ボトルネック詳細 */}
       {bnDetail && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.35)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, padding:16 }} onClick={() => setBnDetail(null)}>
           <div style={{ background:"white", borderRadius:20, padding:"28px 32px", maxWidth:440, width:"100%", boxShadow:"0 20px 60px rgba(0,0,0,0.2)" }} onClick={e => e.stopPropagation()}>
@@ -630,7 +957,7 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
         </div>
       )}
 
-      {/* ── Bottleneck All Modal ── */}
+      {/* ボトルネック一覧 */}
       {showBnAll && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.35)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, padding:16 }} onClick={() => setShowBnAll(false)}>
           <div style={{ background:"white", borderRadius:20, padding:"28px 32px", maxWidth:560, width:"100%", maxHeight:"80vh", display:"flex", flexDirection:"column", boxShadow:"0 20px 60px rgba(0,0,0,0.2)" }} onClick={e => e.stopPropagation()}>
@@ -638,7 +965,6 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
               <span style={{ fontSize:18, fontWeight:800, color:"#1F2937" }}>⚠️ ボトルネック一覧</span>
               <button onClick={() => setShowBnAll(false)} style={{ background:"#F3F4F6", border:"none", borderRadius:8, padding:"6px 10px", cursor:"pointer", fontSize:14, color:"#6B7280" }}>✕</button>
             </div>
-            {/* Tabs: open / resolved */}
             {[false, true].map(resolved => {
               const list = bottlenecks.filter(b => !!b.resolvedAt === resolved);
               if (list.length === 0) return null;
@@ -679,19 +1005,17 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
         </div>
       )}
 
-      {/* ── Add / Edit Form Modal ── */}
+      {/* ボトルネック追加・編集フォーム */}
       {showBnForm && (
         <BnFormModal
           bnEdit={bnEdit}
           bottlenecks={bottlenecks}
           saveBottlenecks={saveBottlenecks}
-          BN_PRI_COLOR={BN_PRI_COLOR}
-          BN_PRIORITIES={BN_PRIORITIES}
           onClose={() => { setShowBnForm(false); setBnEdit(null); }}
         />
       )}
 
-      {/* ── Flow Meta Edit Modal ── */}
+      {/* フローメタ編集 */}
       {editMetaFlow && (
         <FlowMetaModal
           flow={editMetaFlow}
@@ -701,15 +1025,13 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
         />
       )}
 
-      {/* ① 関連タスク 追加・編集モーダル */}
+      {/* 関連タスク 追加・編集モーダル */}
       {rtModalOpen && (
         <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:16 }}>
           <div style={{ background:"white",borderRadius:20,padding:"28px 32px",maxWidth:440,width:"100%",boxShadow:"0 20px 60px rgba(0,0,0,0.2)" }}>
             <h3 style={{ fontSize:17,fontWeight:700,color:"#1F2937",marginBottom:20 }}>{editingRt ? "関連タスクを編集" : "＋ 関連タスクを追加"}</h3>
-
             <label style={{ fontSize:13,fontWeight:600,color:"#374151",display:"block",marginBottom:6 }}>タスク名 <span style={{ color:"#EF4444" }}>*</span></label>
             <input value={rtForm.title} onChange={e=>setRtForm(f=>({...f,title:e.target.value}))} placeholder="例：ターゲットサークル候補をリスト化" style={{ width:"100%",border:"1.5px solid #E5E7EB",borderRadius:10,padding:"10px 12px",fontSize:13,outline:"none",marginBottom:14,boxSizing:"border-box" }} onFocus={e=>e.target.style.borderColor="var(--accent,#06C755)"} onBlur={e=>e.target.style.borderColor="#E5E7EB"} />
-
             <label style={{ fontSize:13,fontWeight:600,color:"#374151",display:"block",marginBottom:6 }}>担当者</label>
             <div style={{ display:"flex",gap:8,flexWrap:"wrap",marginBottom:14 }}>
               {MEMBERS.map(m => {
@@ -723,7 +1045,6 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
                 );
               })}
             </div>
-
             <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14 }}>
               <div>
                 <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:4 }}>期限</label>
@@ -736,7 +1057,6 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
                 </select>
               </div>
             </div>
-
             <div style={{ display:"flex",gap:10 }}>
               <button onClick={()=>setRtModalOpen(false)} style={{ flex:1,padding:12,borderRadius:10,border:"1.5px solid #E5E7EB",background:"white",color:"#6B7280",fontSize:14,fontWeight:600,cursor:"pointer" }}>キャンセル</button>
               <button onClick={saveRt} style={{ flex:1,padding:12,borderRadius:10,border:"none",background:"var(--accent,#06C755)",color:"white",fontSize:14,fontWeight:700,cursor:"pointer" }}>{editingRt?"保存する":"追加する"}</button>
@@ -749,4 +1069,4 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
 }
 
 window.WorkflowPage = WorkflowPage;
-window.BnFormModal = BnFormModal;
+window.BnFormModal  = BnFormModal;

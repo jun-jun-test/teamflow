@@ -77,12 +77,104 @@ window.SAMPLE_FLOWS = [
     id: "f1",
     title: "サークル間マッチング初動フロー",
     business: "サークル間マッチング事業",
+    priority: "高",
     steps: [
-      { id:"s1", title:"ターゲットサークルを洗い出す",   assignee:"じゅん",  assignees:["じゅん"],         status:"完了",   relatedTaskIds:["t3"],  order:0, description:"" },
-      { id:"s2", title:"Instagramアカウントを確認する",  assignee:"あいる",  assignees:["あいる"],         status:"完了",   relatedTaskIds:["t1"],  order:1, description:"" },
-      { id:"s3", title:"DM文面を作成する",               assignee:"そういち",assignees:["そういち","じゅん"],status:"進行中", relatedTaskIds:["t2"],  order:2, description:"" },
-      { id:"s4", title:"30チームへDMを送信する",         assignee:"まなと",  assignees:["まなと","あいる"], status:"未着手", relatedTaskIds:["t11"], order:3, description:"" },
-      { id:"s5", title:"返信チームを管理する",           assignee:"けい",    assignees:["けい","そういち"], status:"未着手", relatedTaskIds:["t15"], order:4, description:"" },
+      {
+        id:"s1", title:"ターゲットサークルを洗い出す",
+        assignee:"じゅん", assignees:["じゅん"],
+        status:"完了", order:0, description:"",
+        tasks: [
+          { id:"st1a", title:"Twitterでサークルアカウントを検索", done:true },
+          { id:"st1b", title:"大学公式サイトのサークル一覧を確認", done:true },
+          { id:"st1c", title:"30件のターゲットリストを作成", done:true },
+        ]
+      },
+      {
+        id:"s2", title:"Instagramアカウントを準備する",
+        assignee:"あいる", assignees:["あいる"],
+        status:"完了", order:1, description:"",
+        tasks: [
+          { id:"st2a", title:"アカウントのプロフィール文を作成", done:true },
+          { id:"st2b", title:"アイコン・カバー画像を設定", done:true },
+        ]
+      },
+      {
+        id:"s3", title:"DM文面を作成する",
+        assignee:"そういち", assignees:["そういち","じゅん"],
+        status:"進行中", order:2, description:"",
+        tasks: [
+          { id:"st3a", title:"テンプレートA案を作成", done:true },
+          { id:"st3b", title:"テンプレートB案を作成", done:false },
+          { id:"st3c", title:"チームでレビュー・最終決定", done:false },
+        ]
+      },
+      {
+        id:"s4", title:"30チームへDMを送信する",
+        assignee:"まなと", assignees:["まなと","あいる"],
+        status:"未着手", order:3, description:"",
+        tasks: [
+          { id:"st4a", title:"送信リストの最終確認", done:false },
+          { id:"st4b", title:"DM一斉送信を実行", done:false },
+          { id:"st4c", title:"送信完了レポートを作成", done:false },
+        ]
+      },
+      {
+        id:"s5", title:"返信チームを管理する",
+        assignee:"けい", assignees:["けい","そういち"],
+        status:"未着手", order:4, description:"",
+        tasks: [
+          { id:"st5a", title:"返信対応フローを整備", done:false },
+          { id:"st5b", title:"担当メンバーへの引き継ぎ", done:false },
+        ]
+      },
+    ]
+  },
+  {
+    id: "f2",
+    title: "TikTok運用フロー",
+    business: "SNSメディア事業",
+    priority: "中",
+    steps: [
+      {
+        id:"s6", title:"企画・ネタ出し",
+        assignee:"じゅん", assignees:["じゅん","そういち"],
+        status:"完了", order:0, description:"",
+        tasks: [
+          { id:"st6a", title:"TikTok/Instagramのトレンド調査", done:true },
+          { id:"st6b", title:"ネタリスト10案を作成", done:true },
+          { id:"st6c", title:"チームで採用ネタを絞り込み", done:true },
+        ]
+      },
+      {
+        id:"s7", title:"動画撮影",
+        assignee:"じゅん", assignees:["じゅん","あいる"],
+        status:"進行中", order:1, description:"",
+        tasks: [
+          { id:"st7a", title:"構成台本を作成", done:true },
+          { id:"st7b", title:"動画撮影（5本）", done:false },
+          { id:"st7c", title:"素材確認・バックアップ", done:false },
+        ]
+      },
+      {
+        id:"s8", title:"編集・投稿",
+        assignee:"あいる", assignees:["あいる"],
+        status:"未着手", order:2, description:"",
+        tasks: [
+          { id:"st8a", title:"動画編集（字幕・BGM）", done:false },
+          { id:"st8b", title:"サムネイルを作成", done:false },
+          { id:"st8c", title:"投稿スケジュールを設定", done:false },
+          { id:"st8d", title:"5本の投稿完了", done:false },
+        ]
+      },
+      {
+        id:"s9", title:"効果測定",
+        assignee:"あいる", assignees:["あいる","じゅん"],
+        status:"未着手", order:3, description:"",
+        tasks: [
+          { id:"st9a", title:"インプレッション・フォロワー数を記録", done:false },
+          { id:"st9b", title:"週次レポートを作成", done:false },
+        ]
+      },
     ]
   }
 ];
