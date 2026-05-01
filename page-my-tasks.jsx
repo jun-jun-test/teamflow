@@ -2,12 +2,12 @@ function SummaryCard({ label, count, icon, color, highlight }) {
   var G  = "var(--accent,#06C755)";
   var GL = "var(--accent-light,#E9FBEF)";
   return (
-    <div style={{ background:highlight?GL:"white",borderRadius:"var(--card-radius,16px)",padding:"18px 20px",boxShadow:"var(--card-shadow,0 2px 12px rgba(0,0,0,0.08))",border:highlight?`2px solid ${G}`:"var(--card-border,none)",flex:1,minWidth:0 }}>
-      <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:8 }}>
-        <div style={{ width:36,height:36,borderRadius:10,background:highlight?G+"25":color+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18 }}>{icon}</div>
-        <span style={{ fontSize:13,color:highlight?"#065F46":"#6B7280",fontWeight:highlight?700:500 }}>{label}</span>
+    <div style={{ background:highlight?GL:"white",borderRadius:"var(--card-radius,16px)",padding:"16px 18px",boxShadow:"var(--card-shadow,0 2px 12px rgba(0,0,0,0.08))",border:highlight?`2px solid ${G}`:"var(--card-border,none)",flex:1,minWidth:0 }}>
+      <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:6 }}>
+        <div style={{ width:34,height:34,borderRadius:9,background:highlight?G+"25":color+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17 }}>{icon}</div>
+        <span style={{ fontSize:12,color:highlight?"#065F46":"#6B7280",fontWeight:highlight?700:500 }}>{label}</span>
       </div>
-      <div style={{ fontSize:36,fontWeight:800,color:highlight?G:color,lineHeight:1 }}>{count}<span style={{ fontSize:18,fontWeight:700 }}>件</span></div>
+      <div style={{ fontSize:32,fontWeight:800,color:highlight?G:color,lineHeight:1 }}>{count}<span style={{ fontSize:16,fontWeight:700 }}>件</span></div>
     </div>
   );
 }
@@ -59,7 +59,7 @@ function WeekTaskRow({ task }) {
 }
 
 function MyTasksPage({ currentUser, tasks, setTasks, isMobile }) {
-  var myTasks      = tasks.filter(function(t){ return t.assignee === currentUser; });
+  var myTasks      = tasks.filter(function(t){ return t.assignee === currentUser || (t.assignees && t.assignees.includes(currentUser)); });
   var todayTasks   = myTasks.filter(function(t){ return isToday(t.dueDate) && t.status !== "完了"; });
   var weekTasks    = myTasks.filter(function(t){ return isThisWeek(t.dueDate) && t.status !== "完了"; });
   var overdueTasks = myTasks.filter(function(t){ return isOverdue(t); });
@@ -70,12 +70,9 @@ function MyTasksPage({ currentUser, tasks, setTasks, isMobile }) {
   var [editFields,   setEditFields]   = React.useState({});
   var [detailTask,   setDetailTask]   = React.useState(null);
 
-  // ── 検索・絞り込み ──
   var [searchQuery,  setSearchQuery]  = React.useState('');
   var [statusFilter, setStatusFilter] = React.useState('all');
-
-  // ── 一括選択 ──
-  var [selectedIds, setSelectedIds] = React.useState(new Set());
+  var [selectedIds,  setSelectedIds]  = React.useState(new Set());
 
   var LIMIT = 3;
   var todaySource  = todayTasks.length > 0 ? todayTasks : myTasks.filter(function(t){ return t.status !== "完了"; }).slice(0,6);
@@ -86,7 +83,6 @@ function MyTasksPage({ currentUser, tasks, setTasks, isMobile }) {
   var G  = "var(--accent,#06C755)";
   var GL = "var(--accent-light,#E9FBEF)";
 
-  // 検索・フィルター適用
   var filteredTasks = myTasks.filter(function(t) {
     var q = searchQuery.toLowerCase();
     var matchSearch = !q || t.title.toLowerCase().indexOf(q) >= 0 || (t.memo || '').toLowerCase().indexOf(q) >= 0;
@@ -130,22 +126,17 @@ function MyTasksPage({ currentUser, tasks, setTasks, isMobile }) {
     setSelectedIds(new Set());
   }
 
-  // ── 一括操作 ──
   function toggleSelect(id) {
     setSelectedIds(function(prev) {
       var next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   }
 
   function toggleSelectAll() {
-    if (selectedIds.size === filteredTasks.length && filteredTasks.length > 0) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(filteredTasks.map(function(t){ return t.id; })));
-    }
+    if (selectedIds.size === filteredTasks.length && filteredTasks.length > 0) setSelectedIds(new Set());
+    else setSelectedIds(new Set(filteredTasks.map(function(t){ return t.id; })));
   }
 
   function bulkChangeStatus(status) {
@@ -174,25 +165,26 @@ function MyTasksPage({ currentUser, tasks, setTasks, isMobile }) {
 
   return (
     <div>
-      <div style={{ marginBottom:24 }}>
+      <div style={{ marginBottom:isMobile?16:24 }}>
         <h1 style={{ fontSize:"var(--title-sz,24px)",fontWeight:800,color:"#1F2937",marginBottom:4 }}>自分のタスク</h1>
         <p style={{ fontSize:"var(--font-sz,14px)",color:"#6B7280" }}>今日やることと今週のタスクを確認できます。</p>
       </div>
 
-      <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:"var(--gap,16px)",marginBottom:"var(--gap,16px)" }}>
-        <SummaryCard label="今日やること" count={todaySource.length} icon="✅" color="#4CAF50" highlight={true} />
-        <SummaryCard label="今週のタスク" count={weekSource.length}  icon="📅" color="#3B82F6" />
-        <SummaryCard label="期限切れ"     count={overdueTasks.length} icon="⏰" color="#EF4444" />
+      {/* サマリーカード: モバイルは横スクロール対応で3列 */}
+      <div style={{ display:"grid",gridTemplateColumns:isMobile?"repeat(3,1fr)":"1fr 1fr 1fr",gap:isMobile?8:"var(--gap,16px)",marginBottom:isMobile?12:"var(--gap,16px)" }}>
+        <SummaryCard label="今日"    count={todaySource.length} icon="✅" color="#4CAF50" highlight={true} />
+        <SummaryCard label="今週"    count={weekSource.length}  icon="📅" color="#3B82F6" />
+        <SummaryCard label="期限切れ" count={overdueTasks.length} icon="⏰" color="#EF4444" />
       </div>
 
       <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:"var(--gap,16px)",marginBottom:"var(--gap,16px)" }}>
-        {/* TODAY */}
-        <div style={{ background:GL,borderRadius:"var(--card-radius,16px)",padding:"var(--card-pad,20px 24px)",boxShadow:"var(--card-shadow,0 2px 12px rgba(0,0,0,0.08))",border:`2px solid ${G}`,borderLeft:`5px solid ${G}`,position:"relative",overflow:"hidden" }}>
+        {/* 今日やること */}
+        <div style={{ background:GL,borderRadius:"var(--card-radius,16px)",padding:isMobile?"14px 16px":"var(--card-pad,20px 24px)",boxShadow:"var(--card-shadow,0 2px 12px rgba(0,0,0,0.08))",border:`2px solid ${G}`,borderLeft:`5px solid ${G}`,position:"relative",overflow:"hidden" }}>
           <div style={{ position:"absolute",top:-30,right:-30,width:120,height:120,borderRadius:"50%",background:G+"15",pointerEvents:"none" }}></div>
-          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
+          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
             <div style={{ display:"flex",alignItems:"center",gap:8 }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={G} strokeWidth="2.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-              <span style={{ fontWeight:800,fontSize:16,color:"#065F46" }}>今日やること</span>
+              <span style={{ fontWeight:800,fontSize:15,color:"#065F46" }}>今日やること</span>
             </div>
             <SeeAllBtn expanded={showAllToday} count={todaySource.length} limit={LIMIT} onToggle={() => setShowAllToday(function(v){ return !v; })} />
           </div>
@@ -200,13 +192,13 @@ function MyTasksPage({ currentUser, tasks, setTasks, isMobile }) {
             {todaySource.length===0 && <div style={{ color:"#065F46",fontSize:13,padding:"8px 0" }}>今日のタスクはありません 🎉</div>}
             {visibleToday.map(function(t){ return <TodayTaskRow key={t.id} task={t} onRowClick={setDetailTask} onToggleDone={toggleDone} onEdit={startEdit} />; })}
           </div>
-          <p style={{ fontSize:11,color:"#9CA3AF",marginTop:8 }}>タスク行をクリックすると詳細を確認できます</p>
+          {!isMobile && <p style={{ fontSize:11,color:"#9CA3AF",marginTop:8 }}>タスク行をクリックすると詳細を確認できます</p>}
         </div>
 
-        {/* WEEK */}
-        <div style={{ background:"var(--card-bg,white)",borderRadius:"var(--card-radius,16px)",padding:"var(--card-pad,20px 24px)",boxShadow:"var(--card-shadow,0 2px 12px rgba(0,0,0,0.08))",border:"var(--card-border,none)" }}>
-          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
-            <span style={{ fontWeight:700,fontSize:16,color:"#1F2937" }}>今週のタスク</span>
+        {/* 今週のタスク */}
+        <div style={{ background:"var(--card-bg,white)",borderRadius:"var(--card-radius,16px)",padding:isMobile?"14px 16px":"var(--card-pad,20px 24px)",boxShadow:"var(--card-shadow,0 2px 12px rgba(0,0,0,0.08))",border:"var(--card-border,none)" }}>
+          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
+            <span style={{ fontWeight:700,fontSize:15,color:"#1F2937" }}>今週のタスク</span>
             <SeeAllBtn expanded={showAllWeek} count={weekSource.length} limit={LIMIT} onToggle={() => setShowAllWeek(function(v){ return !v; })} />
           </div>
           <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
@@ -216,42 +208,80 @@ function MyTasksPage({ currentUser, tasks, setTasks, isMobile }) {
         </div>
       </div>
 
-      {/* 担当タスク一覧（検索・絞り込み・一括操作） */}
-      <div style={{ background:"var(--card-bg,white)",borderRadius:"var(--card-radius,16px)",padding:"var(--card-pad,20px 24px)",boxShadow:"var(--card-shadow,0 2px 12px rgba(0,0,0,0.08))",border:"var(--card-border,none)" }}>
-        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10 }}>
-          <div style={{ fontWeight:700,fontSize:16,color:"#1F2937" }}>担当タスク一覧</div>
-          <div style={{ display:"flex",alignItems:"center",gap:8,flexWrap:"wrap" }}>
-            {/* 検索ボックス */}
-            <div style={{ position:"relative" }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" style={{ position:"absolute",left:10,top:"50%",transform:"translateY(-50%)" }}>
+      {/* 担当タスク一覧 */}
+      <div style={{ background:"var(--card-bg,white)",borderRadius:"var(--card-radius,16px)",padding:isMobile?"14px 14px":"var(--card-pad,20px 24px)",boxShadow:"var(--card-shadow,0 2px 12px rgba(0,0,0,0.08))",border:"var(--card-border,none)" }}>
+
+        {/* ── モバイル用 検索・フィルター ── */}
+        {isMobile ? (
+          <div style={{ marginBottom:12 }}>
+            <div style={{ fontSize:15,fontWeight:700,color:"#1F2937",marginBottom:10 }}>担当タスク一覧</div>
+            {/* 全幅検索 */}
+            <div style={{ position:"relative",marginBottom:8 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2"
+                style={{ position:"absolute",left:10,top:"50%",transform:"translateY(-50%)" }}>
                 <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
               </svg>
-              <input
-                value={searchQuery}
+              <input value={searchQuery}
                 onChange={function(e){ setSearchQuery(e.target.value); setSelectedIds(new Set()); }}
                 placeholder="タスクを検索…"
-                style={{ border:"1.5px solid #E5E7EB",borderRadius:9,padding:"7px 10px 7px 30px",fontSize:13,outline:"none",width:160,boxSizing:"border-box" }}
+                style={{ width:"100%",border:"1.5px solid #E5E7EB",borderRadius:10,padding:"10px 10px 10px 32px",fontSize:14,outline:"none",boxSizing:"border-box" }}
                 onFocus={function(e){ e.target.style.borderColor=G; }}
                 onBlur={function(e){ e.target.style.borderColor="#E5E7EB"; }}
               />
               {searchQuery && (
                 <button onClick={function(){ setSearchQuery(''); }}
-                  style={{ position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#9CA3AF",fontSize:14,lineHeight:1,padding:0 }}>✕</button>
+                  style={{ position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#9CA3AF",fontSize:16,lineHeight:1,padding:0 }}>✕</button>
               )}
             </div>
-            {/* ステータスフィルター */}
-            <div style={{ display:"flex",gap:4 }}>
+            {/* 横スクロール可能なフィルターピル */}
+            <div style={{ display:"flex",gap:6,overflowX:"auto",paddingBottom:2,WebkitOverflowScrolling:"touch" }}>
               {['all','未着手','進行中','確認待ち','完了'].map(function(s) {
+                var active = statusFilter === s;
                 return (
                   <button key={s} onClick={function(){ setStatusFilter(s); setSelectedIds(new Set()); }}
-                    style={{ padding:"5px 10px",borderRadius:9999,border:"1.5px solid " + (statusFilter===s ? G : "#E5E7EB"),background:statusFilter===s?GL:"white",color:statusFilter===s?G:"#6B7280",fontWeight:statusFilter===s?700:500,fontSize:11,cursor:"pointer",whiteSpace:"nowrap" }}>
+                    style={{ padding:"6px 14px",borderRadius:9999,border:"1.5px solid " + (active ? G : "#E5E7EB"),
+                             background:active?GL:"white",color:active?G:"#6B7280",
+                             fontWeight:active?700:500,fontSize:12,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0 }}>
                     {s==='all'?'すべて':s}
                   </button>
                 );
               })}
             </div>
           </div>
-        </div>
+        ) : (
+          /* ── PC用 検索・フィルター（変更なし） ── */
+          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10 }}>
+            <div style={{ fontWeight:700,fontSize:16,color:"#1F2937" }}>担当タスク一覧</div>
+            <div style={{ display:"flex",alignItems:"center",gap:8,flexWrap:"wrap" }}>
+              <div style={{ position:"relative" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" style={{ position:"absolute",left:10,top:"50%",transform:"translateY(-50%)" }}>
+                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input value={searchQuery}
+                  onChange={function(e){ setSearchQuery(e.target.value); setSelectedIds(new Set()); }}
+                  placeholder="タスクを検索…"
+                  style={{ border:"1.5px solid #E5E7EB",borderRadius:9,padding:"7px 10px 7px 30px",fontSize:13,outline:"none",width:160,boxSizing:"border-box" }}
+                  onFocus={function(e){ e.target.style.borderColor=G; }}
+                  onBlur={function(e){ e.target.style.borderColor="#E5E7EB"; }}
+                />
+                {searchQuery && (
+                  <button onClick={function(){ setSearchQuery(''); }}
+                    style={{ position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#9CA3AF",fontSize:14,lineHeight:1,padding:0 }}>✕</button>
+                )}
+              </div>
+              <div style={{ display:"flex",gap:4 }}>
+                {['all','未着手','進行中','確認待ち','完了'].map(function(s) {
+                  return (
+                    <button key={s} onClick={function(){ setStatusFilter(s); setSelectedIds(new Set()); }}
+                      style={{ padding:"5px 10px",borderRadius:9999,border:"1.5px solid " + (statusFilter===s ? G : "#E5E7EB"),background:statusFilter===s?GL:"white",color:statusFilter===s?G:"#6B7280",fontWeight:statusFilter===s?700:500,fontSize:11,cursor:"pointer",whiteSpace:"nowrap" }}>
+                      {s==='all'?'すべて':s}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 件数表示 */}
         <div style={{ fontSize:12,color:"#9CA3AF",marginBottom:8 }}>
@@ -259,103 +289,182 @@ function MyTasksPage({ currentUser, tasks, setTasks, isMobile }) {
           {(searchQuery || statusFilter !== 'all') && ' (絞り込み中)'}
         </div>
 
-        <div style={{ overflowX:"auto" }}>
-          <table style={{ width:"100%",borderCollapse:"collapse",fontSize:13 }}>
-            <thead>
-              <tr style={{ borderBottom:"2px solid #F3F4F6" }}>
-                <th style={{ padding:"8px 10px",width:36 }}>
-                  <input type="checkbox" checked={allSelected} onChange={toggleSelectAll}
-                    style={{ cursor:"pointer",width:16,height:16,accentColor:G }} />
-                </th>
-                {["タスク名","所属事業","期限","進捗","ステータス","メモ","操作"].map(function(h) {
-                  return <th key={h} style={{ padding:"8px 10px",textAlign:"left",color:"#9CA3AF",fontWeight:600,fontSize:12,whiteSpace:"nowrap" }}>{h}</th>;
-                })}
-              </tr>
-            </thead>
-            <tbody>
+        {/* ── モバイル: カードレイアウト ── */}
+        {isMobile ? (
+          <div>
+            {/* 全選択チェックボックス */}
+            {filteredTasks.length > 0 && (
+              <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:10,paddingBottom:10,borderBottom:"1px solid #F3F4F6" }}>
+                <input type="checkbox" checked={allSelected} onChange={toggleSelectAll}
+                  style={{ width:16,height:16,cursor:"pointer",accentColor:G }} />
+                <span style={{ fontSize:12,color:"#9CA3AF" }}>すべて選択</span>
+              </div>
+            )}
+            {/* タスクカード一覧 */}
+            <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+              {filteredTasks.length === 0 && (
+                <div style={{ padding:"24px",textAlign:"center",color:"#9CA3AF",fontSize:13 }}>
+                  {searchQuery || statusFilter !== 'all' ? '条件に一致するタスクがありません' : 'タスクはありません'}
+                </div>
+              )}
               {filteredTasks.map(function(t) {
                 var isSel = selectedIds.has(t.id);
                 return (
-                  <tr key={t.id} style={{ borderBottom:"1px solid #F9FAFB",background:isSel?"#F0FDF4":"transparent",transition:"background 0.1s" }}>
-                    <td style={{ padding:"10px 10px" }}>
+                  <div key={t.id}
+                    style={{ background:isSel?"#F0FDF4":"white",borderRadius:12,padding:"12px 14px",
+                             border:`1.5px solid ${isSel?G:"#F0F0F0"}`,boxShadow:"0 1px 4px rgba(0,0,0,0.05)",
+                             transition:"all 0.15s" }}>
+                    {/* 行1: チェック + タイトル + ステータス */}
+                    <div style={{ display:"flex",alignItems:"flex-start",gap:8,marginBottom:8 }}>
                       <input type="checkbox" checked={isSel} onChange={function(){ toggleSelect(t.id); }}
-                        style={{ cursor:"pointer",width:16,height:16,accentColor:G }} />
-                    </td>
-                    <td style={{ padding:"10px 10px",fontWeight:600,color:"#1F2937",maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:"pointer" }}
-                      onClick={function(){ setDetailTask(t); }}>
-                      {t.title}
-                    </td>
-                    <td style={{ padding:"10px 10px",color:"#6B7280",whiteSpace:"nowrap" }}>
-                      <span style={{ display:"inline-flex",alignItems:"center",gap:4 }}>
-                        <span style={{ width:8,height:8,borderRadius:"50%",background:G,display:"inline-block" }}></span>
-                        {t.business}
-                      </span>
-                    </td>
-                    <td style={{ padding:"10px 10px",color:"#6B7280",whiteSpace:"nowrap" }}>{formatDate(t.dueDate)}</td>
-                    <td style={{ padding:"10px 10px",minWidth:100 }}>
-                      <div style={{ display:"flex",alignItems:"center",gap:6 }}>
-                        <div style={{ flex:1 }}><ProgressBar value={t.progress} height={5} /></div>
-                        <span style={{ fontSize:12,color:"#1F2937",fontWeight:600,width:34,textAlign:"right" }}>{t.progress}%</span>
+                        style={{ marginTop:3,width:16,height:16,cursor:"pointer",accentColor:G,flexShrink:0 }} />
+                      <div style={{ flex:1,minWidth:0,cursor:"pointer" }} onClick={function(){ setDetailTask(t); }}>
+                        <div style={{ fontSize:14,fontWeight:600,color:"#1F2937",lineHeight:1.4,
+                                       marginBottom:3,wordBreak:"break-all" }}>
+                          {t.title}
+                        </div>
+                        <div style={{ fontSize:11,color:"#9CA3AF",display:"flex",alignItems:"center",gap:4 }}>
+                          <span style={{ width:6,height:6,borderRadius:"50%",background:G,display:"inline-block",flexShrink:0 }}></span>
+                          {t.business}
+                        </div>
                       </div>
-                    </td>
-                    <td style={{ padding:"10px 10px" }}><StatusBadge status={t.status} /></td>
-                    <td style={{ padding:"10px 10px",color:"#9CA3AF",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{t.memo||"—"}</td>
-                    <td style={{ padding:"10px 10px" }}>
-                      <div style={{ display:"flex",gap:4 }}>
-                        <button onClick={function(){ startEdit(t); }} style={{ fontSize:12,color:G,background:GL,border:"none",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontWeight:600 }}>編集</button>
-                        <button onClick={function(){ deleteTask(t.id); }} style={{ fontSize:12,color:"#DC2626",background:"#FEE2E2",border:"none",borderRadius:6,padding:"4px 8px",cursor:"pointer" }}>🗑</button>
+                      <StatusBadge status={t.status} />
+                    </div>
+                    {/* 行2: 進捗バー */}
+                    <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:8,paddingLeft:24 }}>
+                      <div style={{ flex:1 }}><ProgressBar value={t.progress} height={5} /></div>
+                      <span style={{ fontSize:11,fontWeight:700,color:"#6B7280",width:30,textAlign:"right",flexShrink:0 }}>{t.progress}%</span>
+                    </div>
+                    {/* 行3: 期限 + ボタン */}
+                    <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",paddingLeft:24 }}>
+                      <span style={{ fontSize:11,color:"#9CA3AF" }}>📅 {formatDate(t.dueDate)}</span>
+                      <div style={{ display:"flex",gap:6 }}>
+                        <button onClick={function(){ setDetailTask(t); }}
+                          style={{ fontSize:11,padding:"5px 10px",borderRadius:8,background:"#F3F4F6",color:"#374151",border:"none",cursor:"pointer",fontWeight:500 }}>
+                          詳細
+                        </button>
+                        <button onClick={function(){ startEdit(t); }}
+                          style={{ fontSize:11,padding:"5px 10px",borderRadius:8,background:GL,color:G,border:"none",cursor:"pointer",fontWeight:700 }}>
+                          編集
+                        </button>
+                        <button onClick={function(){ deleteTask(t.id); }}
+                          style={{ fontSize:11,padding:"5px 8px",borderRadius:8,background:"#FEE2E2",color:"#DC2626",border:"none",cursor:"pointer" }}>
+                          🗑
+                        </button>
                       </div>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
-          {filteredTasks.length===0 && (
-            <div style={{ padding:"24px",textAlign:"center",color:"#9CA3AF" }}>
-              {searchQuery || statusFilter !== 'all' ? '条件に一致するタスクがありません' : 'タスクはありません'}
             </div>
-          )}
-          <div style={{ fontSize:12,color:"#9CA3AF",marginTop:12 }}>全{myTasks.length}件</div>
-        </div>
+            {filteredTasks.length > 0 && (
+              <div style={{ fontSize:12,color:"#9CA3AF",marginTop:10,textAlign:"center" }}>全{myTasks.length}件</div>
+            )}
+          </div>
+        ) : (
+          /* ── PC: テーブルレイアウト（変更なし） ── */
+          <div style={{ overflowX:"auto" }}>
+            <table style={{ width:"100%",borderCollapse:"collapse",fontSize:13 }}>
+              <thead>
+                <tr style={{ borderBottom:"2px solid #F3F4F6" }}>
+                  <th style={{ padding:"8px 10px",width:36 }}>
+                    <input type="checkbox" checked={allSelected} onChange={toggleSelectAll}
+                      style={{ cursor:"pointer",width:16,height:16,accentColor:G }} />
+                  </th>
+                  {["タスク名","所属事業","期限","進捗","ステータス","メモ","操作"].map(function(h) {
+                    return <th key={h} style={{ padding:"8px 10px",textAlign:"left",color:"#9CA3AF",fontWeight:600,fontSize:12,whiteSpace:"nowrap" }}>{h}</th>;
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTasks.map(function(t) {
+                  var isSel = selectedIds.has(t.id);
+                  return (
+                    <tr key={t.id} style={{ borderBottom:"1px solid #F9FAFB",background:isSel?"#F0FDF4":"transparent",transition:"background 0.1s" }}>
+                      <td style={{ padding:"10px 10px" }}>
+                        <input type="checkbox" checked={isSel} onChange={function(){ toggleSelect(t.id); }}
+                          style={{ cursor:"pointer",width:16,height:16,accentColor:G }} />
+                      </td>
+                      <td style={{ padding:"10px 10px",fontWeight:600,color:"#1F2937",maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:"pointer" }}
+                        onClick={function(){ setDetailTask(t); }}>
+                        {t.title}
+                      </td>
+                      <td style={{ padding:"10px 10px",color:"#6B7280",whiteSpace:"nowrap" }}>
+                        <span style={{ display:"inline-flex",alignItems:"center",gap:4 }}>
+                          <span style={{ width:8,height:8,borderRadius:"50%",background:G,display:"inline-block" }}></span>
+                          {t.business}
+                        </span>
+                      </td>
+                      <td style={{ padding:"10px 10px",color:"#6B7280",whiteSpace:"nowrap" }}>{formatDate(t.dueDate)}</td>
+                      <td style={{ padding:"10px 10px",minWidth:100 }}>
+                        <div style={{ display:"flex",alignItems:"center",gap:6 }}>
+                          <div style={{ flex:1 }}><ProgressBar value={t.progress} height={5} /></div>
+                          <span style={{ fontSize:12,color:"#1F2937",fontWeight:600,width:34,textAlign:"right" }}>{t.progress}%</span>
+                        </div>
+                      </td>
+                      <td style={{ padding:"10px 10px" }}><StatusBadge status={t.status} /></td>
+                      <td style={{ padding:"10px 10px",color:"#9CA3AF",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{t.memo||"—"}</td>
+                      <td style={{ padding:"10px 10px" }}>
+                        <div style={{ display:"flex",gap:4 }}>
+                          <button onClick={function(){ startEdit(t); }} style={{ fontSize:12,color:G,background:GL,border:"none",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontWeight:600 }}>編集</button>
+                          <button onClick={function(){ deleteTask(t.id); }} style={{ fontSize:12,color:"#DC2626",background:"#FEE2E2",border:"none",borderRadius:6,padding:"4px 8px",cursor:"pointer" }}>🗑</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {filteredTasks.length===0 && (
+              <div style={{ padding:"24px",textAlign:"center",color:"#9CA3AF" }}>
+                {searchQuery || statusFilter !== 'all' ? '条件に一致するタスクがありません' : 'タスクはありません'}
+              </div>
+            )}
+            <div style={{ fontSize:12,color:"#9CA3AF",marginTop:12 }}>全{myTasks.length}件</div>
+          </div>
+        )}
       </div>
 
-      {/* ── 一括操作バー（選択時に表示） ── */}
+      {/* 一括操作バー */}
       {selectedIds.size > 0 && (
         <div style={{
-          position:"fixed", bottom:isMobile?68:16, left:"50%", transform:"translateX(-50%)",
-          background:"#1F2937", borderRadius:16, padding:"12px 20px",
-          display:"flex", alignItems:"center", gap:12, zIndex:500,
+          position:"fixed", bottom:isMobile?72:16, left:"50%", transform:"translateX(-50%)",
+          background:"#1F2937", borderRadius:16, padding:"12px 16px",
+          display:"flex", alignItems:"center", gap:10, zIndex:500,
           boxShadow:"0 8px 32px rgba(0,0,0,0.25)", flexWrap:"wrap", justifyContent:"center",
-          maxWidth:"90vw",
+          maxWidth:"92vw",
         }}>
           <span style={{ fontSize:13,fontWeight:700,color:"white",whiteSpace:"nowrap" }}>{selectedIds.size}件選択中</span>
-          <div style={{ width:1,height:20,background:"#374151" }} />
+          <div style={{ width:1,height:20,background:"#374151",flexShrink:0 }} />
           {STATUS_OPTIONS.map(function(s) {
             return (
               <button key={s} onClick={function(){ bulkChangeStatus(s); }}
-                style={{ padding:"6px 12px",borderRadius:9999,border:"none",background:s==="完了"?G:s==="進行中"?"#F59E0B":s==="確認待ち"?"#3B82F6":"#6B7280",color:"white",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap" }}>
-                {s}に変更
+                style={{ padding:"6px 10px",borderRadius:9999,border:"none",background:s==="完了"?G:s==="進行中"?"#F59E0B":s==="確認待ち"?"#3B82F6":"#6B7280",color:"white",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap" }}>
+                {isMobile ? s : s + "に変更"}
               </button>
             );
           })}
           <button onClick={bulkDelete}
-            style={{ padding:"6px 12px",borderRadius:9999,border:"none",background:"#EF4444",color:"white",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap" }}>
-            🗑 削除
+            style={{ padding:"6px 10px",borderRadius:9999,border:"none",background:"#EF4444",color:"white",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap" }}>
+            🗑 {isMobile ? "削除" : "削除"}
           </button>
           <button onClick={function(){ setSelectedIds(new Set()); }}
-            style={{ padding:"6px 10px",borderRadius:9999,border:"1px solid #4B5563",background:"transparent",color:"#9CA3AF",fontSize:12,cursor:"pointer" }}>
-            ✕ 解除
+            style={{ padding:"6px 10px",borderRadius:9999,border:"1px solid #4B5563",background:"transparent",color:"#9CA3AF",fontSize:11,cursor:"pointer" }}>
+            ✕
           </button>
         </div>
       )}
 
-      {/* タスク詳細モーダル（コメント付き） */}
+      {/* タスク詳細モーダル */}
       {detailTask && (
-        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:16 }}
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.35)",display:"flex",alignItems:isMobile?"flex-end":"center",justifyContent:"center",zIndex:1000,padding:isMobile?0:16 }}
           onClick={function(){ setDetailTask(null); }}>
-          <div style={{ background:"white",borderRadius:20,padding:"28px 32px",maxWidth:520,width:"100%",boxShadow:"0 20px 60px rgba(0,0,0,0.2)",maxHeight:"90vh",overflowY:"auto" }}
+          <div style={{ background:"white",borderRadius:isMobile?"20px 20px 0 0":20,padding:isMobile?"24px 20px":"28px 32px",
+                         maxWidth:isMobile?"100%":520,width:"100%",boxShadow:"0 20px 60px rgba(0,0,0,0.2)",
+                         maxHeight:isMobile?"92vh":"90vh",overflowY:"auto" }}
             onClick={function(e){ e.stopPropagation(); }}>
+            {/* ドラッグハンドル（モバイル） */}
+            {isMobile && <div style={{ width:40,height:4,background:"#E5E7EB",borderRadius:9999,margin:"0 auto 16px" }} />}
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16 }}>
               <div style={{ flex:1,minWidth:0,marginRight:12 }}>
                 <div style={{ display:"flex",gap:8,marginBottom:8,flexWrap:"wrap" }}>
@@ -372,7 +481,6 @@ function MyTasksPage({ currentUser, tasks, setTasks, isMobile }) {
                 { icon:"👤",label:"担当者",       val:detailTask.assignee },
                 { icon:"📅",label:"期限",         val:formatDate(detailTask.dueDate) },
                 { icon:"🏢",label:"所属事業",     val:detailTask.business },
-                { icon:"📁",label:"プロジェクト", val:detailTask.project },
                 { icon:"💡",label:"ワークフロー", val:detailTask.workflowStage },
                 { icon:"📆",label:"作成日",       val:formatDate(detailTask.createdAt) },
               ].map(function(r) {
@@ -400,7 +508,6 @@ function MyTasksPage({ currentUser, tasks, setTasks, isMobile }) {
               </div>
             )}
 
-            {/* コメントセクション */}
             <div style={{ borderTop:"1px solid #F3F4F6",paddingTop:16,marginBottom:16 }}>
               <TaskComments taskId={detailTask.id} currentUser={currentUser} />
             </div>
@@ -424,16 +531,18 @@ function MyTasksPage({ currentUser, tasks, setTasks, isMobile }) {
         var task = tasks.find(function(t){ return t.id === editingId; });
         if (!task) return null;
         return (
-          <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:16 }}>
-            <div style={{ background:"white",borderRadius:20,padding:"28px 32px",maxWidth:440,width:"100%",boxShadow:"0 20px 60px rgba(0,0,0,0.2)" }}>
+          <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.35)",display:"flex",alignItems:isMobile?"flex-end":"center",justifyContent:"center",zIndex:1000,padding:isMobile?0:16 }}>
+            <div style={{ background:"white",borderRadius:isMobile?"20px 20px 0 0":20,padding:isMobile?"24px 20px":"28px 32px",
+                           maxWidth:isMobile?"100%":440,width:"100%",boxShadow:"0 20px 60px rgba(0,0,0,0.2)" }}>
+              {isMobile && <div style={{ width:40,height:4,background:"#E5E7EB",borderRadius:9999,margin:"0 auto 16px" }} />}
               <h3 style={{ fontSize:17,fontWeight:700,color:"#1F2937",marginBottom:4 }}>タスクを編集</h3>
-              <p style={{ fontSize:13,color:"#6B7280",marginBottom:20 }}>{task.title}</p>
+              <p style={{ fontSize:13,color:"#6B7280",marginBottom:20,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{task.title}</p>
               <label style={{ fontSize:13,fontWeight:600,color:"#374151",display:"block",marginBottom:6 }}>ステータス</label>
               <div style={{ display:"flex",gap:8,marginBottom:16,flexWrap:"wrap" }}>
                 {STATUS_OPTIONS.map(function(s) {
                   return (
                     <button key={s} onClick={function(){ setEditFields(function(f){ return Object.assign({},f,{status:s}); }); }}
-                      style={{ padding:"7px 14px",borderRadius:9999,border:`1.5px solid ${editFields.status===s?G:"#E5E7EB"}`,background:editFields.status===s?GL:"white",color:editFields.status===s?G:"#6B7280",fontWeight:editFields.status===s?700:500,fontSize:13,cursor:"pointer" }}>
+                      style={{ padding:"8px 14px",borderRadius:9999,border:`1.5px solid ${editFields.status===s?G:"#E5E7EB"}`,background:editFields.status===s?GL:"white",color:editFields.status===s?G:"#6B7280",fontWeight:editFields.status===s?700:500,fontSize:13,cursor:"pointer" }}>
                       {s}
                     </button>
                   );
@@ -442,7 +551,7 @@ function MyTasksPage({ currentUser, tasks, setTasks, isMobile }) {
               <label style={{ fontSize:13,fontWeight:600,color:"#374151",display:"block",marginBottom:6 }}>進捗率: {editFields.progress}%</label>
               <input type="range" min={0} max={100} value={editFields.progress}
                 onChange={function(e){ setEditFields(function(f){ return Object.assign({},f,{progress:Number(e.target.value)}); }); }}
-                style={{ width:"100%",marginBottom:16 }} />
+                style={{ width:"100%",marginBottom:16,accentColor:G }} />
               <label style={{ fontSize:13,fontWeight:600,color:"#374151",display:"block",marginBottom:6 }}>メモ</label>
               <textarea value={editFields.memo}
                 onChange={function(e){ setEditFields(function(f){ return Object.assign({},f,{memo:e.target.value}); }); }}

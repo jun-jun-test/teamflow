@@ -117,7 +117,7 @@ function CalendarPage({ currentUser, tasks, setTasks, isMobile }) {
         {/* カレンダーグリッド */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3 }}>
           {cells.map(function(d, i) {
-            if (!d) return <div key={"pad" + i} style={{ minHeight: isMobile ? 54 : 72 }} />;
+            if (!d) return <div key={"pad" + i} style={{ minHeight: isMobile ? 62 : 72 }} />;
             var ds = getDateStr(d);
             var dayTasks = getTasksForDay(d);
             var isToday_ = ds === todayStr;
@@ -129,7 +129,7 @@ function CalendarPage({ currentUser, tasks, setTasks, isMobile }) {
               <div key={d}
                 onClick={function(){ setSelDay(d === selDay ? null : d); }}
                 style={{
-                  minHeight: isMobile ? 54 : 72,
+                  minHeight: isMobile ? 62 : 72,
                   borderRadius: 10,
                   border: isSel ? "2px solid " + G : isToday_ ? "2px solid #93C5FD" : hasOverdue ? "1.5px solid #FCA5A5" : "1px solid #F3F4F6",
                   background: isSel ? GL : isToday_ ? "#EFF6FF" : "white",
@@ -203,24 +203,44 @@ function CalendarPage({ currentUser, tasks, setTasks, isMobile }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {selTasks.map(function(t) {
                 return (
-                  <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "#F8FAF8", borderRadius: 12, border: "1px solid #F3F4F6" }}>
-                    <MemberAvatar name={t.assignee} size={28} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</div>
-                      <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>{t.assignee} · {t.business}</div>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                      <div style={{ width: 52 }}>
-                        <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 2, textAlign: "right" }}>{t.progress}%</div>
-                        <ProgressBar value={t.progress} height={4} />
+                  <div key={t.id} style={{ background: "#F8FAF8", borderRadius: 12, border: "1px solid #F3F4F6",
+                                          padding: isMobile ? "12px 12px" : "10px 14px" }}>
+                    {/* モバイル: 縦積みレイアウト / PC: 横並びレイアウト */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: isMobile ? 8 : 0 }}>
+                      <MemberAvatar name={t.assignee} size={28} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", overflow: "hidden", textOverflow: "ellipsis",
+                                       whiteSpace: isMobile ? "normal" : "nowrap", lineHeight: 1.4 }}>{t.title}</div>
+                        <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>{t.assignee} · {t.business}</div>
                       </div>
-                      <StatusBadge status={t.status} />
-                      <PriorityBadge priority={t.priority || "中"} />
-                      <button onClick={function(){ startEdit(t); }}
-                        style={{ background: GL, border: "none", borderRadius: 7, padding: "5px 10px", fontSize: 12, color: G, cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
-                        編集
-                      </button>
+                      {!isMobile && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                          <div style={{ width: 52 }}>
+                            <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 2, textAlign: "right" }}>{t.progress}%</div>
+                            <ProgressBar value={t.progress} height={4} />
+                          </div>
+                          <StatusBadge status={t.status} />
+                          <PriorityBadge priority={t.priority || "中"} />
+                          <button onClick={function(){ startEdit(t); }}
+                            style={{ background: GL, border: "none", borderRadius: 7, padding: "5px 10px", fontSize: 12, color: G, cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
+                            編集
+                          </button>
+                        </div>
+                      )}
                     </div>
+                    {/* モバイル: 進捗 + バッジ + 編集ボタンを2行目に */}
+                    {isMobile && (
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, paddingLeft: 38 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <StatusBadge status={t.status} />
+                          <span style={{ fontSize: 11, color: "#6B7280" }}>{t.progress}%</span>
+                        </div>
+                        <button onClick={function(){ startEdit(t); }}
+                          style={{ background: GL, border: "none", borderRadius: 7, padding: "6px 12px", fontSize: 12, color: G, cursor: "pointer", fontWeight: 700 }}>
+                          編集
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}

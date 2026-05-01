@@ -219,8 +219,8 @@ function App() {
         onGoSchedule={() => { setShowSchedulePopup(false); setPage("schedule"); }}
       />
       {!isMobile && <Sidebar page={page} setPage={setPage} />}
-      <main style={{ marginLeft:sidebarW, paddingTop:64, paddingBottom:isMobile?72:0 }}>
-        <div style={{ padding:isMobile?"24px 16px":"28px 32px", maxWidth:1280 }}>
+      <main style={{ marginLeft:sidebarW, paddingTop:64, paddingBottom:isMobile?80:0 }}>
+        <div style={{ padding:isMobile?"20px 14px":"28px 32px", maxWidth:1280 }}>
           {renderPage()}
         </div>
       </main>

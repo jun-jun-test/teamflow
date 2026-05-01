@@ -221,16 +221,35 @@ function Sidebar({ page, setPage }) {
 }
 
 // ===== BOTTOM NAV (mobile) =====
+// 7項目を狭い画面に収めるため、短縮ラベルを使用する
+const MOBILE_SHORT_LABELS = {
+  dashboard: "ホーム",
+  mytasks:   "タスク",
+  calendar:  "予定",
+  create:    "作成",
+  workflow:  "フロー",
+  schedule:  "日程",
+  settings:  "設定",
+};
+
 function BottomNav({ page, setPage }) {
   const navItems = getNavItems();
   return (
-    <nav style={{ position:"fixed", bottom:0, left:0, right:0, height:60, background:"white", borderTop:"1px solid #E5E7EB", display:"flex", zIndex:100 }}>
+    <nav style={{ position:"fixed", bottom:0, left:0, right:0, height:64, background:"white", borderTop:"1px solid #E5E7EB", display:"flex", zIndex:100 }}>
       {navItems.map(item => {
         const active = page === item.key;
+        const shortLabel = MOBILE_SHORT_LABELS[item.key] || item.label;
         return (
-          <button key={item.key} onClick={() => setPage(item.key)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2, border:"none", background:"transparent", cursor:"pointer", color:active?"var(--accent,#06C755)":"#9CA3AF", fontSize:9, fontWeight:active?700:500 }}>
-            <span style={{ color:active?"var(--accent,#06C755)":"#9CA3AF" }}>{item.icon}</span>
-            {item.label}
+          <button key={item.key} onClick={() => setPage(item.key)}
+            style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+                     gap:2, border:"none", cursor:"pointer", padding:"0 2px",
+                     background: active ? "var(--accent-light,#E9FBEF)" : "transparent",
+                     color: active ? "var(--accent,#06C755)" : "#9CA3AF",
+                     fontSize:9, fontWeight:active?700:500,
+                     borderTop: active ? "2px solid var(--accent,#06C755)" : "2px solid transparent",
+                     transition:"background 0.15s" }}>
+            <span style={{ color:active?"var(--accent,#06C755)":"#9CA3AF", display:"flex", marginBottom:1 }}>{item.icon}</span>
+            <span style={{ lineHeight:1.1 }}>{shortLabel}</span>
           </button>
         );
       })}
