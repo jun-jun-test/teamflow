@@ -3,6 +3,7 @@ function App() {
   const [page,         setPage]         = React.useState("dashboard");
   const [tasks,        setTasks]        = React.useState(() => loadFromStorage(STORAGE_KEYS.TASKS, SAMPLE_TASKS));
   const [kpis,         setKpis]         = React.useState(() => loadFromStorage(STORAGE_KEYS.KPIS,  SAMPLE_KPIS));
+  const [flows,        setFlows]        = React.useState(() => loadFromStorage(STORAGE_KEYS.FLOWS, SAMPLE_FLOWS));
   const [isMobile,     setIsMobile]     = React.useState(window.innerWidth < 768);
   const [profileOpen,  setProfileOpen]  = React.useState(false);
   const [memberPrefs,  setMemberPrefs]  = React.useState(() => {
@@ -64,6 +65,11 @@ function App() {
       setKpis(dbData.kpis);
       try { localStorage.setItem(STORAGE_KEYS.KPIS, JSON.stringify(dbData.kpis)); } catch(e) {}
     }
+    // フローデータをStateとlocalStorageに反映（クロスデバイス同期の核心）
+    if (dbData.flows !== null) {
+      setFlows(dbData.flows);
+      try { localStorage.setItem(STORAGE_KEYS.FLOWS, JSON.stringify(dbData.flows)); } catch(e) {}
+    }
     if (dbData.memberPrefs !== null) {
       applyMemberPrefs(dbData.memberPrefs);
       setMemberPrefs(dbData.memberPrefs);
@@ -86,6 +92,7 @@ function App() {
       applyDBData(dbData);
       if (dbData.tasks  !== null && dbData.tasks.length === 0)  { var lt=loadFromStorage(STORAGE_KEYS.TASKS,[]); if(lt.length>0) window._syncToDB('tasks',lt,'upsert'); }
       if (dbData.kpis   !== null && dbData.kpis.length === 0)   { var lk=loadFromStorage(STORAGE_KEYS.KPIS,[]); if(lk.length>0) window._syncToDB('kpis',lk,'upsert'); }
+      if (dbData.flows  !== null && dbData.flows.length === 0)  { var lf=loadFromStorage(STORAGE_KEYS.FLOWS,[]); if(lf.length>0) window._syncToDB('flows',lf,'replace'); }
       if (dbData.memberPrefs !== null && Object.keys(dbData.memberPrefs).length === 0) { var lmp=loadFromStorage('kaiwai_member_prefs',null); if(lmp&&Object.keys(lmp).length>0) window._syncSingleToDB('member_prefs','prefs',lmp); }
       if (dbData.notifications !== null && dbData.notifications.length === 0) { var ln=loadFromStorage('seed_notifications',[]); if(ln.length>0) window._syncToDB('notifications',ln,'replace'); }
     }).catch(function(e) { console.warn('[Supabase] 読み込みエラー:', e); });
@@ -94,7 +101,7 @@ function App() {
   // ── Supabase Realtime ──
   React.useEffect(() => {
     if (!window.db) return;
-    var WATCH_TABLES = ['tasks','kpis','member_prefs','schedule','notifications'];
+    var WATCH_TABLES = ['tasks','kpis','flows','member_prefs','schedule','notifications'];
     var ch = window.db.channel('seed-realtime-all');
     WATCH_TABLES.forEach(function(table) {
       ch.on('postgres_changes', { event: '*', schema: 'public', table: table }, function() {
@@ -200,7 +207,7 @@ function App() {
       case "mytasks":   return <MyTasksPage   currentUser={currentUser} tasks={tasks} setTasks={setTasks} isMobile={isMobile} />;
       case "calendar":  return <CalendarPage  currentUser={currentUser} tasks={tasks} setTasks={setTasks} isMobile={isMobile} />;
       case "create":    return <TaskCreatePage currentUser={currentUser} tasks={tasks} setTasks={setTasks} isMobile={isMobile} onTaskCreated={() => setNotifications(loadFromStorage('seed_notifications', []))} />;
-      case "workflow":  return <WorkflowPage  tasks={tasks} isMobile={isMobile} />;
+      case "workflow":  return <WorkflowPage  tasks={tasks} isMobile={isMobile} initialFlows={flows} />;
       case "schedule":  return <SchedulePage  currentUser={currentUser} onSaved={handleScheduleSaved} isMobile={isMobile} />;
       case "settings":  return <SettingsPage  appSettings={appSettings} onSaveSettings={handleSaveSettings} isMobile={isMobile} />;
       default:          return <DashboardPage currentUser={currentUser} tasks={tasks} setTasks={setTasks} kpis={kpis} setKpis={setKpis} isMobile={isMobile} appSettings={appSettings} />;

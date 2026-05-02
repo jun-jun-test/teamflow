@@ -448,6 +448,10 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
   const [flows, setFlows] = React.useState(() =>
     (initialFlows && initialFlows.length > 0) ? initialFlows : loadFromStorage(STORAGE_KEYS.FLOWS, SAMPLE_FLOWS)
   );
+  // Supabase経由で他端末のフロー変更を受信したとき、ローカルstateに反映する
+  React.useEffect(function() {
+    if (initialFlows && initialFlows.length > 0) setFlows(initialFlows);
+  }, [initialFlows]);
   const [selectedFlowId, setSelectedFlowId] = React.useState(flows[0]?.id || null);
   const [showBuilder,    setShowBuilder]    = React.useState(false);
   const [editingFlow,    setEditingFlow]    = React.useState(null);
