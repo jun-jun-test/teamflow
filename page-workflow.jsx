@@ -205,7 +205,7 @@ function TaskItem({ task, editable, onToggle, onRemove, onRename }) {
 // 状態: 未着手（白・グレー）/ 進行中（グリーンボーダー・パルスアニメ）/ 完了（グレーアウト）
 const STEP_ICONS_TL = ["🎯","📋","🚀","📣","📬","✅","🔍","💬","⚙️","📊"];
 
-function TimelineStepCard({ step, idx, isLast, editable, onUpdate, onMove, onRemove, onToggleTask, onAddTask, onRemoveTask, onRenameTask }) {
+function TimelineStepCard({ step, idx, isLast, editable, isMobile, onUpdate, onMove, onRemove, onToggleTask, onAddTask, onRemoveTask, onRenameTask }) {
   const isDone   = step.status === "完了";
   const isActive = step.status === "進行中";
   const tasks    = step.tasks || [];
@@ -253,7 +253,7 @@ function TimelineStepCard({ step, idx, isLast, editable, onUpdate, onMove, onRem
   return (
     <div style={{ display:"flex", gap:0 }}>
       {/* ── 左レール（タイムライン縦線＋ドット） ── */}
-      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", width:48, flexShrink:0 }}>
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", width:isMobile?36:48, flexShrink:0 }}>
         {/* ステップ番号ドット */}
         <div style={{
           width:36, height:36, borderRadius:"50%", flexShrink:0, zIndex:1,
@@ -274,7 +274,7 @@ function TimelineStepCard({ step, idx, isLast, editable, onUpdate, onMove, onRem
       {/* ── ステップカード ── */}
       <div style={{ flex:1, marginBottom:20, borderRadius:14, overflow:"hidden", transition:"all 0.3s ease", ...cardStyle }}>
         {/* カードヘッダー */}
-        <div style={{ padding:"14px 16px 10px", display:"flex", alignItems:"flex-start", gap:10 }}>
+        <div style={{ padding:isMobile?"12px 10px 8px":"14px 16px 10px", display:"flex", alignItems:"flex-start", gap:isMobile?8:10 }}>
           <span style={{ fontSize:20, flexShrink:0, lineHeight:1.4, opacity: isDone ? 0.5 : 1 }}>
             {STEP_ICONS_TL[idx % STEP_ICONS_TL.length]}
           </span>
@@ -324,9 +324,8 @@ function TimelineStepCard({ step, idx, isLast, editable, onUpdate, onMove, onRem
             )}
           </div>
 
-          {/* 右側：バッジ＋タスク進捗＋編集コントロール */}
+          {/* 右側：バッジ＋タスク進捗（＋PC時の編集コントロール） */}
           <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:5, flexShrink:0 }}>
-            {/* ステータスバッジ */}
             {isDone && (
               <span style={{ background:"#D1FAE5", color:"#059669", border:"1px solid #A7F3D0", borderRadius:9999,
                              padding:"2px 9px", fontSize:10, fontWeight:700, whiteSpace:"nowrap" }}>
@@ -340,15 +339,14 @@ function TimelineStepCard({ step, idx, isLast, editable, onUpdate, onMove, onRem
                 ▶ 進行中
               </span>
             )}
-            {/* タスク進捗カウント */}
             {tasks.length > 0 && (
               <span style={{ fontSize:11, fontWeight:600, whiteSpace:"nowrap",
                              color: isDone ? "#9CA3AF" : isActive ? "var(--accent-text,#15803D)" : "#9CA3AF" }}>
                 {doneTasks}/{tasks.length}
               </span>
             )}
-            {/* 編集モード用コントロール */}
-            {editable && (
+            {/* PC: 編集コントロールを右カラムに表示 */}
+            {editable && !isMobile && (
               <div style={{ display:"flex", gap:3, marginTop:2 }}>
                 <select value={step.status} onChange={e => onUpdate({ status: e.target.value })}
                   style={{ fontSize:11, border:"1px solid #E5E7EB", borderRadius:6, padding:"3px 6px", color: (STATUS_COLORS[step.status]||{}).text, background: (STATUS_COLORS[step.status]||{}).bg }}>
@@ -361,6 +359,20 @@ function TimelineStepCard({ step, idx, isLast, editable, onUpdate, onMove, onRem
             )}
           </div>
         </div>
+
+        {/* Mobile: 編集コントロールをカード下部に横並びで表示 */}
+        {editable && isMobile && (
+          <div style={{ display:"flex", gap:6, padding:"8px 10px", borderTop:"1px solid #F0F0F0", alignItems:"center", background:"#FAFAFA" }}>
+            <select value={step.status} onChange={e => onUpdate({ status: e.target.value })}
+              style={{ flex:1, fontSize:12, border:"1px solid #E5E7EB", borderRadius:7, padding:"6px 8px",
+                       color:(STATUS_COLORS[step.status]||{}).text, background:(STATUS_COLORS[step.status]||{}).bg }}>
+              {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <button onClick={() => onMove(-1)} style={{ background:"#F3F4F6", border:"none", borderRadius:7, cursor:"pointer", padding:"6px 12px", fontSize:13 }}>↑</button>
+            <button onClick={() => onMove(1)}  style={{ background:"#F3F4F6", border:"none", borderRadius:7, cursor:"pointer", padding:"6px 12px", fontSize:13 }}>↓</button>
+            <button onClick={onRemove}         style={{ background:"#FEE2E2", border:"none", borderRadius:7, cursor:"pointer", padding:"6px 10px", fontSize:13, color:"#DC2626" }}>🗑</button>
+          </div>
+        )}
 
         {/* ── タスクリスト ── */}
         {(tasks.length > 0 || editable) && (
@@ -685,23 +697,42 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
         <p style={{ fontSize:14, color:"#6B7280" }}>事業ごとの流れと現在地を確認できます。</p>
       </div>
 
-      {/* 事業別進捗カード */}
-      <div style={{ display:"flex", gap:16, marginBottom:24, flexWrap:"wrap" }}>
-        {projectProgress.map(pp => (
-          <div key={pp.name} style={{ flex:1, minWidth:200, background:"white", borderRadius:16, padding:"18px 20px", boxShadow:"0 1px 8px rgba(0,0,0,0.07)" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
-              <div style={{ width:40, height:40, borderRadius:10, background:"#EAF7EA", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>{businessIcons[pp.name]}</div>
-              <span style={{ fontSize:13, fontWeight:600, color:"#1F2937", flex:1 }}>{pp.name}</span>
+      {/* 事業別進捗カード - モバイルは横スクロール・コンパクト表示 */}
+      {isMobile ? (
+        <div style={{ display:"flex", gap:10, marginBottom:16, overflowX:"auto", WebkitOverflowScrolling:"touch", paddingBottom:4 }}>
+          {projectProgress.map(pp => (
+            <div key={pp.name} style={{ flexShrink:0, width:150, background:"white", borderRadius:14, padding:"14px 14px", boxShadow:"0 1px 6px rgba(0,0,0,0.07)" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                <span style={{ fontSize:18 }}>{businessIcons[pp.name]}</span>
+                <span style={{ fontSize:11, fontWeight:600, color:"#1F2937", flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{pp.name}</span>
+              </div>
+              <div style={{ fontSize:26, fontWeight:800, color:"#4CAF50", marginBottom:6 }}>{pp.pct}%</div>
+              <ProgressBar value={pp.pct} height={5} />
+              <div style={{ fontSize:11, color:"#9CA3AF", marginTop:5 }}>進行中 {pp.count}件</div>
             </div>
-            <div style={{ fontSize:32, fontWeight:800, color:"#4CAF50", marginBottom:8 }}>{pp.pct}%</div>
-            <ProgressBar value={pp.pct} height={6} />
-            <div style={{ fontSize:12, color:"#9CA3AF", marginTop:6 }}>進行中のタスク {pp.count}件</div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ display:"flex", gap:16, marginBottom:24, flexWrap:"wrap" }}>
+          {projectProgress.map(pp => (
+            <div key={pp.name} style={{ flex:1, minWidth:200, background:"white", borderRadius:16, padding:"18px 20px", boxShadow:"0 1px 8px rgba(0,0,0,0.07)" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+                <div style={{ width:40, height:40, borderRadius:10, background:"#EAF7EA", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>{businessIcons[pp.name]}</div>
+                <span style={{ fontSize:13, fontWeight:600, color:"#1F2937", flex:1 }}>{pp.name}</span>
+              </div>
+              <div style={{ fontSize:32, fontWeight:800, color:"#4CAF50", marginBottom:8 }}>{pp.pct}%</div>
+              <ProgressBar value={pp.pct} height={6} />
+              <div style={{ fontSize:12, color:"#9CA3AF", marginTop:6 }}>進行中のタスク {pp.count}件</div>
+            </div>
+          ))}
+        </div>
+      )}
 
-      {/* フロー選択 + 新規作成 */}
-      <div style={{ display:"flex", gap:10, marginBottom:20, flexWrap:"wrap", alignItems:"center" }}>
+      {/* フロー選択 + 新規作成 - モバイルは横スクロール */}
+      <div style={{ display:"flex", gap:10, marginBottom:16, alignItems:"center",
+                    overflowX: isMobile ? "auto" : "visible",
+                    flexWrap: isMobile ? "nowrap" : "wrap",
+                    WebkitOverflowScrolling:"touch", paddingBottom: isMobile ? 2 : 0 }}>
         {flows.map(f => {
           const active = selectedFlowId === f.id;
           const pc = f.priority ? FLOW_PRI_COLORS[f.priority] : null;
@@ -731,29 +762,33 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
         </button>
       </div>
 
-      {/* 新規フロー作成フォーム */}
+      {/* 新規フロー作成フォーム - モバイルは縦積み */}
       {showBuilder && (
-        <div style={{ background:"white", borderRadius:14, padding:"18px 20px", boxShadow:"0 1px 8px rgba(0,0,0,0.07)", marginBottom:20 }}>
-          <div style={{ display:"flex", gap:12, flexWrap:"wrap", alignItems:"center", marginBottom:12 }}>
-            <input value={newFlowTitle} onChange={e => setNewFlowTitle(e.target.value)} placeholder="フロー名を入力..." style={{ flex:1, minWidth:180, border:"1.5px solid #E5E7EB", borderRadius:8, padding:"8px 12px", fontSize:13, outline:"none" }} onFocus={e=>e.target.style.borderColor="#4CAF50"} onBlur={e=>e.target.style.borderColor="#E5E7EB"} />
-            <input value={newFlowBiz} onChange={e => setNewFlowBiz(e.target.value)} list="flow-biz-dl" placeholder="事業名" style={{ minWidth:160, border:"1.5px solid #E5E7EB", borderRadius:8, padding:"8px 12px", fontSize:13, outline:"none" }} onFocus={e=>e.target.style.borderColor="#4CAF50"} onBlur={e=>e.target.style.borderColor="#E5E7EB"} />
+        <div style={{ background:"white", borderRadius:14, padding:isMobile?"14px 14px":"18px 20px", boxShadow:"0 1px 8px rgba(0,0,0,0.07)", marginBottom:16 }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:12 }}>
+            <input value={newFlowTitle} onChange={e => setNewFlowTitle(e.target.value)} placeholder="フロー名を入力..."
+              style={{ width:"100%", border:"1.5px solid #E5E7EB", borderRadius:8, padding:"10px 12px", fontSize:14, outline:"none", boxSizing:"border-box" }}
+              onFocus={e=>e.target.style.borderColor="#4CAF50"} onBlur={e=>e.target.style.borderColor="#E5E7EB"} />
+            <input value={newFlowBiz} onChange={e => setNewFlowBiz(e.target.value)} list="flow-biz-dl" placeholder="事業名"
+              style={{ width:"100%", border:"1.5px solid #E5E7EB", borderRadius:8, padding:"10px 12px", fontSize:14, outline:"none", boxSizing:"border-box" }}
+              onFocus={e=>e.target.style.borderColor="#4CAF50"} onBlur={e=>e.target.style.borderColor="#E5E7EB"} />
             <datalist id="flow-biz-dl">{BUSINESSES.map(b => <option key={b} value={b}/>)}</datalist>
           </div>
-          <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+          <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap", marginBottom:12 }}>
             <span style={{ fontSize:12, fontWeight:600, color:"#6B7280", whiteSpace:"nowrap" }}>優先度：</span>
             {["高","中","低"].map(p => {
               const pc = FLOW_PRI_COLORS[p];
               const sel = newFlowPri === p;
               return (
-                <button key={p} onClick={() => setNewFlowPri(p)} style={{ padding:"5px 12px", borderRadius:9999, border:"2px solid " + (sel ? pc.activeBorder : "#E5E7EB"), background: sel ? pc.bg : "white", color: sel ? pc.text : "#6B7280", fontSize:12, fontWeight: sel?700:500, cursor:"pointer" }}>
+                <button key={p} onClick={() => setNewFlowPri(p)} style={{ padding:"6px 14px", borderRadius:9999, border:"2px solid " + (sel ? pc.activeBorder : "#E5E7EB"), background: sel ? pc.bg : "white", color: sel ? pc.text : "#6B7280", fontSize:13, fontWeight: sel?700:500, cursor:"pointer" }}>
                   {pc.badge}
                 </button>
               );
             })}
-            <div style={{ marginLeft:"auto", display:"flex", gap:8 }}>
-              <button onClick={() => setShowBuilder(false)} style={{ padding:"8px 14px", borderRadius:8, background:"#F3F4F6", color:"#6B7280", border:"none", fontSize:13, cursor:"pointer" }}>キャンセル</button>
-              <button onClick={addFlow} style={{ padding:"8px 20px", borderRadius:8, background:"#4CAF50", color:"white", border:"none", fontSize:13, fontWeight:700, cursor:"pointer" }}>作成</button>
-            </div>
+          </div>
+          <div style={{ display:"flex", gap:8 }}>
+            <button onClick={() => setShowBuilder(false)} style={{ flex:1, padding:"10px", borderRadius:8, background:"#F3F4F6", color:"#6B7280", border:"none", fontSize:14, cursor:"pointer" }}>キャンセル</button>
+            <button onClick={addFlow} style={{ flex:1, padding:"10px", borderRadius:8, background:"#4CAF50", color:"white", border:"none", fontSize:14, fontWeight:700, cursor:"pointer" }}>作成</button>
           </div>
         </div>
       )}
@@ -762,48 +797,52 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
       {selectedFlow && (
         <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 340px", gap:16 }}>
           {/* タイムラインカラム */}
-          <div style={{ background:"white", borderRadius:16, padding:"24px", boxShadow:"0 1px 8px rgba(0,0,0,0.07)" }}>
+          <div style={{ background:"white", borderRadius:16, padding:isMobile?"16px 14px":"24px", boxShadow:"0 1px 8px rgba(0,0,0,0.07)" }}>
             {/* フロータイトル + 操作ボタン */}
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20, gap:12 }}>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
-                  <h2 style={{ fontSize:17, fontWeight:700, color:"#1F2937", margin:0 }}>{selectedFlow.title}</h2>
-                  {selectedFlow.priority && (() => {
-                    const pc = FLOW_PRI_COLORS[selectedFlow.priority];
-                    return <span style={{ fontSize:11, fontWeight:700, color:pc.text, background:pc.bg, border:"1px solid " + pc.border, borderRadius:9999, padding:"2px 9px", whiteSpace:"nowrap" }}>{pc.badge}</span>;
-                  })()}
-                </div>
-                {selectedFlow.business && <div style={{ fontSize:12, color:"#9CA3AF", marginTop:4 }}>{selectedFlow.business}</div>}
-                {/* 全体タスク進捗バー */}
-                {flowProgress && (
-                  <div style={{ marginTop:10 }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
-                      <span style={{ fontSize:11, color:"#9CA3AF" }}>タスク全体の進捗</span>
-                      <span style={{ fontSize:11, fontWeight:700, color:"var(--accent-text,#15803D)" }}>
-                        {flowProgress.done}/{flowProgress.total}完了（{flowProgress.pct}%）
-                      </span>
-                    </div>
-                    <ProgressBar value={flowProgress.pct} height={6} />
+            <div style={{ marginBottom:isMobile?14:20 }}>
+              {/* タイトル行 */}
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:8 }}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                    <h2 style={{ fontSize:isMobile?15:17, fontWeight:700, color:"#1F2937", margin:0 }}>{selectedFlow.title}</h2>
+                    {selectedFlow.priority && (() => {
+                      const pc = FLOW_PRI_COLORS[selectedFlow.priority];
+                      return <span style={{ fontSize:10, fontWeight:700, color:pc.text, background:pc.bg, border:"1px solid " + pc.border, borderRadius:9999, padding:"2px 8px", whiteSpace:"nowrap" }}>{pc.badge}</span>;
+                    })()}
                   </div>
-                )}
-              </div>
-              <div style={{ display:"flex", gap:8, flexShrink:0 }}>
-                <button onClick={() => setEditMetaFlow(selectedFlow)} title="フロー名・事業・優先度を編集 / 削除"
-                  style={{ padding:"6px 10px", borderRadius:8, border:"1.5px solid #E5E7EB", background:"white", color:"#6B7280", fontSize:13, cursor:"pointer" }}>
-                  ⚙️
-                </button>
-                <button onClick={() => setEditingFlow(editingFlow ? null : selectedFlow)}
-                  style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid #4CAF50",
-                           background: editingFlow ? "#EAF7EA" : "white", color:"#4CAF50", fontSize:12, fontWeight:600, cursor:"pointer" }}>
-                  {editingFlow ? "✓ 完了" : "✏️ 編集"}
-                </button>
-                {editingFlow && (
-                  <button onClick={() => addStep(selectedFlow.id)}
-                    style={{ padding:"6px 14px", borderRadius:8, border:"none", background:"#4CAF50", color:"white", fontSize:12, fontWeight:600, cursor:"pointer" }}>
-                    + ステップ追加
+                  {selectedFlow.business && <div style={{ fontSize:11, color:"#9CA3AF", marginTop:3 }}>{selectedFlow.business}</div>}
+                </div>
+                {/* ボタン群 */}
+                <div style={{ display:"flex", gap:6, flexShrink:0 }}>
+                  <button onClick={() => setEditMetaFlow(selectedFlow)}
+                    style={{ padding:isMobile?"7px 9px":"6px 10px", borderRadius:8, border:"1.5px solid #E5E7EB", background:"white", color:"#6B7280", fontSize:13, cursor:"pointer" }}>
+                    ⚙️
                   </button>
-                )}
+                  <button onClick={() => setEditingFlow(editingFlow ? null : selectedFlow)}
+                    style={{ padding:isMobile?"7px 10px":"6px 14px", borderRadius:8, border:"1.5px solid #4CAF50",
+                             background: editingFlow ? "#EAF7EA" : "white", color:"#4CAF50", fontSize:12, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
+                    {editingFlow ? "✓ 完了" : "✏️ 編集"}
+                  </button>
+                  {editingFlow && (
+                    <button onClick={() => addStep(selectedFlow.id)}
+                      style={{ padding:isMobile?"7px 10px":"6px 14px", borderRadius:8, border:"none", background:"#4CAF50", color:"white", fontSize:12, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
+                      {isMobile ? "+ ステップ" : "+ ステップ追加"}
+                    </button>
+                  )}
+                </div>
               </div>
+              {/* 全体タスク進捗バー */}
+              {flowProgress && (
+                <div style={{ marginTop:10 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+                    <span style={{ fontSize:11, color:"#9CA3AF" }}>タスク全体の進捗</span>
+                    <span style={{ fontSize:11, fontWeight:700, color:"var(--accent-text,#15803D)" }}>
+                      {flowProgress.done}/{flowProgress.total}完了（{flowProgress.pct}%）
+                    </span>
+                  </div>
+                  <ProgressBar value={flowProgress.pct} height={6} />
+                </div>
+              )}
             </div>
 
             {/* タイムライン本体 */}
@@ -815,6 +854,7 @@ function WorkflowPage({ tasks, isMobile, initialFlows, initialBottlenecks, initi
                   idx={idx}
                   isLast={idx === arr.length - 1}
                   editable={!!editingFlow}
+                  isMobile={isMobile}
                   onUpdate={(c) => updateStep(selectedFlow.id, step.id, c)}
                   onMove={(d) => moveStep(selectedFlow.id, step.id, d)}
                   onRemove={() => removeStep(selectedFlow.id, step.id)}
